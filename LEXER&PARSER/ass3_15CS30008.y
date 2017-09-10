@@ -12,7 +12,7 @@ void yyerror(const char*);
 %define parse.error verbose
 
 %%
-start : translation_unit {printf("Succesfully Parsed!\n");exit(-1);}
+start : translation_unit {exit(-1);}
 primary_expression : IDENTIFIER {printf("primary_expression <<--- IDENTIFIER\n");}
                    	|CONSTANT   {printf("primary_expression <<--- CONSTANT\n");}
 			        |STRING_LITERAL {printf("primary_expression <<--- STRING_LITERAL\n");}
@@ -27,7 +27,7 @@ postfix_expression : primary_expression  {printf("postfix_expression <<--- prima
 			        | postfix_expression "->" IDENTIFIER {printf("postfix_expression <<--- postfix_expression -> IDENTIFIER \n");}
 			        | postfix_expression "++" {printf("postfix_expression <<--- postfix_expression ++\n");}
 			        | postfix_expression "--" {printf("postfix_expression <<--- postfix_expression --\n");}
-			        | postfix_expression ".'" {printf("postfix_expression <<--- postfix_expression .\n");}
+			        | postfix_expression ".'" {printf("postfix_expression <<--- postfix_expression .'\n");}
 			        ;
 
 argument_expression_list : assignment_expression  {printf("argument_expression_list <<--- assignment_expression \n");}
