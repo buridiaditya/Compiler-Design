@@ -26,8 +26,7 @@ s_char [^"\\]|{escape_sequence}
 error ('.*('|\\)+.*')|(\".*(\"|\\|\\n)+.*\")
 s_char_sequence {s_char}+
 c_char_sequence {c_char}+
-character_constant '{c_char_sequence}'
-constant {integer_constant}|{floating_constant}|{character_constant}|{zero_constant}
+character_constant '{c_char_sequence}' 
 string_literal \"{s_char_sequence}?\"
 single_line_comments "//".*
 multi_line_comments "/*"([^*]|(\*+[^*/]))*\*+\/ 
@@ -35,9 +34,11 @@ punctuator  \[|\]|\(|\)|\{|\}|\.|-\>|\+\+|--|&|\*|\+|-|~|!|\/|%|\<\<|\>\>|\<|\>|
 
 %%
 {ws} {}
-{keyword} {return getTokenTypeCode(yytext);}
-{identifier} {return IDENTIFIER;}
-{constant} {return CONSTANT;}
+{keyword} {yylval.strVal = new string(yytext);return getTokenTypeCode(yytext);}
+{identifier} {yylval.strVal = new string(yytext);return IDENTIFIER;}
+{integer_constant}|{zero_constant} {yylval.intVal = atoi(yytext);return INTEGER_CONSTANT;}
+{floating_constant} {yylval.doubleVal = atof(yytext);return FLOAT_CONSTANT;}
+{character_constant} {yylval.charVal = yytext[0];return CHAR_CONSTANT;}
 {string_literal} {return STRING_LITERAL;}
 {single_line_comments} {}
 {multi_line_comments} {}
