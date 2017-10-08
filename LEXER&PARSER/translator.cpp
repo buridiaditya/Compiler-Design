@@ -3,43 +3,50 @@
 //////////// TYPE_T CLASS /////////////////////
 
 type_t::type_t(type_n type_, bool isPointer_, bool isArray_){
-	type = type_;
-	isPointer = isPointer_;
-	isArray = isArray_;
+	type_name = type_;
+	pointerCheck = isPointer_;
+	arrayCheck = isArray_;
 	noOfElements = 0;
 }
 
-void type_t::setType(type_n type)
+void type_t::setType(type_n type){
 	type_name = type;
+}
 
-void type_t::setPointerType(type_t* type_){
-	isPointer = true;
+void type_t::setPointedType(type_t* type_){
+	pointerCheck = true;
 	pointedType = type_;
 }
 
 void type_t::setArrayType(type_t* type_,int no_){
-	isArray = true;
+	arrayCheck = true;
 	noOfElements = no_;
 	arrayType = type_;
 }
 
-type_t* type_t::getPointedType()
-	return pointerType;
+type_t* type_t::getPointedType(){
+	return pointedType;
+}
 
-type_t* type_t::getArrayType()
+type_t* type_t::getArrayType(){
 	return arrayType;
+}
 
-int type_t::getNoOfElements()
+int type_t::getNoOfElements(){
 	return noOfElements;
+}
 
-bool type_t::isPointer()
-	return isPointer;
+bool type_t::isPointer(){
+	return pointerCheck;
+}
 
-bool type_t::isArray()
-	return isArray;
+bool type_t::isArray(){
+	return arrayCheck;
+}
 
-type_n type_t::getTypeName()
+type_n type_t::getTypeName(){
 	return type_name;
+}
 
 //////////// DECL_T CLASS /////////////////////
 decl_t::decl_t(type_n type_){
@@ -49,11 +56,10 @@ decl_t::decl_t(type_n type_){
 }
 
 decl_t::decl_t(type_t* type_){
-	type = new type_;
+	type = type_;
 	name = NULL;
 	nestedTable = NULL;
 }
-
 
 void decl_t::setType(type_n ty)
 	type->setType(ty);
@@ -77,12 +83,12 @@ void decl_t::setNestedTable(SymbolTable* table)
 	nestedTable = table;
 
 void decl_t::setInitVal(init_t init_){
-	isInitialized = true;
+	checkinitialized = true;
 	initVal = init_;
 }
 
 bool decl_t::isInitialized()
-	return isInitialized;
+	return checkinitialized;
 
 string* decl_t::getName()
 	return name;
@@ -100,12 +106,14 @@ init_t decl_t::getInitValue()
 exp_t::exp_t(){
 	trueList = NULL;
 	falseList = NULL;
+	nextList = NULL;
 	SE = NULL;
 }
 
 exp_t::exp_t(SymbolEntry* SE_){
 	trueList = NULL;
 	falseList = NULL;
+	nextList = NULL;
 	SE = SE_;
 }
 
@@ -120,6 +128,9 @@ void exp_t::setTrueList(vector<int>* truelist)
 
 void exp_t::setFalseList(vector<int>* falselist)
 	falseList = falselist;
+
+void exp_t::setNextList(vector<int>* nextlist)
+	nextList = nextlist;
 
 vector<int>* exp_t::getTrueList()
 	return trueList;
