@@ -1,20 +1,19 @@
+#include <string>
+#include <vector>
+
+using namespace std;
+
 #define SIZE_OF_INT 4
 #define SIZE_OF_CHAR 1
 #define SIZE_OF_DOUBLE 8
 #define SIZE_OF_POINTER 4
 #define SIZE_OF_VOID 0
 
-vector<int>* makelist(int instr);
-vector<int>* merge(vector<int>* list1, vector<int>* list2);
-vector<int>* backpatch(vector<int>* list,int value);
-bool typecheck(type_t* type1, type_t* type2);
-int getWidth(type_n type);
-int getWidth(type_t* type);
-
-SymbolTable *ST = new SymbolTable();
-vector<SymbolTable*> STStack;
-SymbolTable *STCurrent = ST;
-QuadArary *QA = new QuadArray();
+class SymbolTable;
+class SymbolEntry;
+class type_t;
+class decl_t;
+class expt_t;
 
 typedef enum{
 	INT = 0,
@@ -29,6 +28,8 @@ typedef enum{
 typedef enum {
 	OP_ADD,
 	OP_SUB,
+	OP_LSFT,
+	OP_RSFT,
 	OP_MUL,
 	OP_DIV,
 	OP_MOD,
@@ -42,6 +43,7 @@ typedef enum {
 	OP_XOR,
 	OP_OR,
 	OP_COPY,
+	OP_DE_REF,
 	OP_IF_LT_GOTO,
 	OP_IF_GT_GOTO,
 	OP_IF_LTE_GOTO,
@@ -59,7 +61,7 @@ union init_t{
 	char charVal;
 	vector<vector<double> > matVal;
 	double doubleVal;
-}
+};
 
 class type_t{
 public:
@@ -78,50 +80,13 @@ private:
 	type_n type_name;	
 	type_t* pointedType;
 	type_t* arrayType;
-	bool isPointer;
-	bool isArray;
+	bool pointerCheck;
+	bool arrayCheck;
 	int noOfElements;
-}
+};
 
 type_t *type_global = new type_t();
 
-class decl_t{
-public:
-	decl_t(type_n type_);
-	decl_t(type_t * type_);
-	void setType(type_n ty);
-	void setType(type_t* ty);
-	void setName(string* a);
-	void setNestedTable(SymbolTable* table);
-	void setInitVal(init_t initVal);
-	bool isInitialized();
-	string* getName();
-	type_t* getType();
-	SymbolTable* getNestedTable();
-	init_t getInitValue();
-private:
-	type_t *type;
-	string* name;
-	bool isInitialized;
-	init_t initVal;
-	SymbolTable* nestedTable;
-}
-
-class expt_t{
-public:
-	expt_t();
-	expt_t(SymbolEntry* SE_);
-	SymbolEntry* getSymbolEntry();
-	vector<int>* getTrueList();
-	vector<int>* getFalseList();
-	SymbolEntry* setSymbolEntry();
-	void setTrueList(vector<int>* truelist);
-	void setFalseList(vector<int>* falselist);
-private:
-	SymbolEntry* SE;
-	vector<int>* trueList;
-	vector<int>* falseList;
-}
 
 class SymbolEntry{
 public:
@@ -148,15 +113,15 @@ private:
 	int offset;
 	bool initialised;
 	SymbolTable* nestedTable;
-}
+};
 
 class SymbolTable{
 public:
 	SymbolTable();	
 	SymbolEntry* lookup(string* name);
 	SymbolEntry* gentemp(type_t* type);
+	SymbolEntry* gentemp(decl_t* dec);
 	SymbolEntry* gentemp(type_t* type,string* name_);
-	SymbolEntry* gentemp(decl_t* decl);
 	SymbolEntry* gentemp(SymbolEntry* se);
 	int getOffset();
 	void setOffset(int offset_);
@@ -166,7 +131,55 @@ private:
 	int offset;
 	int tempNo;
 	vector<SymbolEntry*> entries;
-}
+};
+
+class decl_t{
+public:
+	decl_t(type_n type_);
+	decl_t(type_t* type_);
+	void setType(type_n ty);
+	void setType(type_t* ty);
+	void setName(string* a);
+	void setNestedTable(SymbolTable* table);
+	void setInitVal(init_t initVal);
+	bool isInitialized();
+	string* getName();
+	type_t* getType();
+	SymbolTable* getNestedTable();
+	init_t getInitValue();
+private:
+	type_t *type;
+	string* name;
+	bool checkinitialized;
+	init_t initVal;
+	SymbolTable* nestedTable;
+};
+
+class expt_t{
+public:
+	expt_t();
+	expt_t(SymbolEntry* SE_);
+	SymbolEntry* getSymbolEntry();
+	vector<int>* getTrueList();
+	vector<int>* getFalseList();
+	vector<int>* getNextList();
+	SymbolEntry* setSymbolEntry();
+	bool isAddress();
+	bool isDeReference();
+	void setAddress(bool add_);
+	void setDeReference(bool de_);
+	void setTrueList(vector<int>* truelist);
+	void setFalseList(vector<int>* falselist);
+	void setNextList(vector<int>* nextlist);
+private:
+	SymbolEntry* SE;
+	bool checkAddress;
+	bool checkDeReference;
+	vector<int>* trueList;
+	vector<int>* falseList;
+	vector<int>* nextList;
+};
+
 
 class QuadEntry{
 public:
@@ -179,13 +192,13 @@ public:
 	string getArgv1();
 	string getArgv2();
 	string getResult();
-	print();
+	void print();
 private:
 	OPCode op;
 	string argv1;
 	string argv2;
 	string result;
-}
+};
 
 class QuadArray{
 public:
@@ -193,7 +206,19 @@ public:
 	int getSize();
 	void emit(QuadEntry* entry);
 	QuadEntry* getEntry(int index);
-	print();
+	void print();
 private:
 	vector<QuadEntry*> entries;
-}
+};
+
+vector<int>* makelist(int instr);
+vector<int>* merge(vector<int>* list1, vector<int>* list2);
+vector<int>* backpatch(vector<int>* list,int value);
+bool typecheck(type_t* type1, type_t* type2);
+int getWidth(type_n type);
+int getWidth(type_t* type);
+
+SymbolTable *ST = new SymbolTable();
+vector<SymbolTable*> STStack;
+SymbolTable *STCurrent = ST;
+QuadArray *QA = new QuadArray();

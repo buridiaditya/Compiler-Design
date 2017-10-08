@@ -12,24 +12,39 @@
 		vector<vector<double> > matVal; 
 		decl_t* decl; 
 		exp_t* exp;
+		type_t* type;
+		vector<int>* list;
 	}
 
 	%token-table
 	%nonassoc "then"
 	%nonassoc "else"
-	%token <integerVal>INT_CONSTANT 
+	%token <integerVal> INT_CONSTANT 
 	%token <doubleVal> DOUBLE_CONSTANT 
 	%token <charVal> CHAR_CONSTANT 
 	%token <strVal> STRING_LITERAL
 	%token <strVal> IDENTIFIER 
-	%start start
-	%define parse.error verbose
+	%type <strVal> unary_operator
+	%type <decl> init_declarator declarator direct_declarator 
+	%type <exp> expression statement assignment_expression conditional_expression logical_OR_expression logical_AND_expression inclusive_OR_expression exclusive_OR_expression AND_expression equality_expression relational_expression shift_expression additive_expression multiplicative_expression cast_expression unary_expression postfix_expression primary_expression selection_statement iteration_statement initializer
+	%type <type> pointer type_specifier declaration_specifiers
+	%type <list> N
+	%type <intergerVal> M
+ 	%start start
 
 	%%
+
 	start : translation_unit {exit(-1);}
 	M: 
 	{
 		$$ = QA->getSize();
+	}
+	;
+	N:
+	{
+		$$ = makelist(QA->getSize());
+		QuadEntry *qe = new QuadEntry(OP_GOTO,"");
+		QA->emit(qe);
 	}
 	;
 	primary_expression : IDENTIFIER 
@@ -130,23 +145,45 @@
 	{
 		$$ = $2;
 		SymbolEntry* se = $2->getSymbolEntry();
+		SymbolEntry* se1;
 		type_t* ty = se->getType();
+		QuadEntry *qe;
 		if(strcmp(*$1,"&") == 0){
-			ty->setPointedType(ty);
-			ty->setType(POINTER);
+			type_t* ty1 = new type_t(POINTER,true,false);
+			ty1->setPointedType(ty);
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
 		}
-		else if(strcmp(*$1,"*") == 0){
-
+		else if(strcmp(*$1,"*") == 0 && ty->getTypeName() == POINTER){
+			
 		}
-		se->setType(ty);
+		else if(strcmp(*$1,"-") == 0){
+			
+		}
 		printf("unary_expression <<--- unary_operator cast_expression\n");
 	}
 	;
 
-	unary_operator : '&' {printf("unary_operator <<--- &\n");}
-	| '*' {printf("unary_operator <<--- *\n");}
-	| '+' {printf("unary_operator <<--- +\n");}
-	| '-' {printf("unary_operator <<--- -\n");}
+	unary_operator : '&' 
+	{
+		$$ = $1; 
+		printf("unary_operator <<--- &\n");
+	}
+	| '*' 
+	{
+		$$ = $1; 
+		printf("unary_operator <<--- *\n");
+	}
+	| '+' 
+	{
+		$$ = $1;
+		printf("unary_operator <<--- +\n");
+	}
+	| '-' 
+	{
+		$$ = $1;
+		printf("unary_operator <<--- -\n");
+	}
 	;
 
 	cast_expression : unary_expression 
@@ -525,11 +562,11 @@
 		type_t* ty = se0->getType();
 		QuadEntry *qe;
 		if(ty->isArray())
-			qe = new QuadEntry();
+		qe = new QuadEntry();
 		else if(ty->isPointer())
-			
+
 		else
-			qe = new QuadEntry(OP_COPY,se0->getName(),se1->getName());
+		qe = new QuadEntry(OP_COPY,se0->getName(),se1->getName());
 		QA->emit(qe);
 		printf("assignment_expression <<--- unary_expression assignment_operator assignment_expression \n");
 	}
@@ -556,7 +593,7 @@
 
 	declaration : declaration_specifiers 
 	{	
-		type_global = $1.getType();
+		type_global = $1;
 	} 
 	init_declarator_list ';' {printf("declaration <<--- declaration_specifiers init_declarator_list ;\n");}
 	| declaration_specifiers ';' {printf("declaration <<--- declaration_specifiers ;\n");}
@@ -574,43 +611,40 @@
 	}
 	;
 
-	init_declarator_list : init_declarator  
-	{
-		SymbolEntry *se = STCurrent->gentemp($1);
-		if($1->isInitialized())
-			se->initialize($1->getInitValue());
-		printf("init_declarator_list <<--- init_declarator\n");
-	}
-	| init_declarator_list ',' init_declarator 
-	{
-		SymbolEntry *se = STCurrent->gentemp($3);
-		if($3->isInitialized())
-			se->initialize($3->getInitValue());
-		printf("init_declarator_list <<--- init_declarator_list , init_declarator\n");
-	}
+	init_declarator_list : init_declarator { printf("init_declarator_list <<--- init_declarator\n");}
+	| init_declarator_list ',' init_declarator { printf("init_declarator_list <<--- init_declarator_list , init_declarator\n");}
 	;
 
 	init_declarator : declarator 
 	{
-		$$ = $1;
+		SymbolEntry *se = STCurrent->gentemp($1);
 		printf("init_declarator <<--- declarator\n");
 	}
 	| declarator '=' initializer {
-		$$ = $1;
-		SymbolEntry* se = $3->getSymbolEntry();
-		$$->setInitValue(se->getInitialValue());
+		SymbolEntry *se = STCurrent->gentemp($1);
+		SymbolEntry *se1 = $3->getSymbolEntry();
+		QuadEntry *qe;
+		type_t* ty1 = declarator->getType();
+		type_n ty_N = ty1->getTypeName();
+		if(ty_N == POINTER)
+
+		else if(ty_N == MATRIX)
+
+		else
+			qe = new QuadEntry(OP_COPY,se->getName(),se1->getName());
+		QA->emit(qe);
 		printf("init_declarator <<--- declarator = initializer\n");
 	}
 	;
 
 	type_specifier : "void" 
 	{
-		$$ = new decl_t(VOID);
+		$$ = new type_t(VOID,false,false);
 		printf("type_specifier : void\n");
 	}
 	| "char" 
 	{
-		$$ = new decl_t(CHAR);
+		$$ = new type_t(CHAR,false,false);
 		printf("type_specifier : char\n");
 	}
 	| "short" 
@@ -619,19 +653,19 @@
 	}
 	| "int"  
 	{
-		$$ = new decl_t(INT);
+		$$ = new type_t(INT,false,false);
 		printf("type_specifier : int\n");
 	}
 	| "long"  {printf("type_specifier : long\n");}
 	| "float"  {printf("type_specifier : float\n");}
 	| "double"  
 	{
-		$$ = new decl_t(DOUBLE);
+		$$ = new type_t(DOUBLE,false,false);
 		printf("type_specifier : double\n");
 	}
 	| "Matrix"  
 	{
-		$$ = new decl_t(MATRIX);
+		$$ = new type_t(MATRIX,false,true);
 		printf("type_specifier : Matrix\n");
 	}
 	| "signed"  {printf("type_specifier : signed\n");}
@@ -752,7 +786,7 @@
 	| declaration_specifiers 
 	{
 		STCurrent->gentemp($1);
-		pintf("parameter_declaration <<--- declaration_specifiers\n");
+		printf("parameter_declaration <<--- declaration_specifiers\n");
 	} 
 	;
 
@@ -828,68 +862,97 @@
 	| expression ';' {printf("expression_statement <<--- expression ;\n");}
 	;
 
-	selection_statement : "if" '(' expression ')' statement     %prec "then" {printf("selection_statement <<--- if (expression) statement\n");}
-	| "if" '(' expression ')' statement "else" statement {printf("selection_statement <<--- if (expression) statement else statement\n");}
-	| "switch" '(' expression ')' statement {printf("selection_statement <<--- switch (expression) statement\n");}
-	;
-
-	expression_opt : expression {printf("expression_opt <<--- expression\n");}
-	| {printf("expression_opt <<--- epsilon\n");}
-	;
-
-	iteration_statement : "while" '(' expression ')' statement  {printf("iteration_statement <<--- while (expression) statement \n");}
-	| "do" statement "while" '(' expression ')' ';' {printf("iteration_statement <<--- do statement while (expression);\n");}
-	| "for" '(' expression_opt ';' expression_opt ';' expression_opt ')' statement {printf("iteration_statement <<--- for (expression_opt ; expression_opt ; expression_opt) statement\n");}
-	| "for" '(' declaration expression_opt';' expression_opt ')' statement {printf("iteration_statement <<--- for(declaration expression_opt; expression_opt) statement\n");}
-	;
-
-	jump_statement : "goto" IDENTIFIER ';' {printf("jump_statement <<--- goto IDENTIFIER ;\n");}
-	| "continue" ';' {printf("jump_statement <<--- continue;\n");}
-	| "break" ';' {printf("jump_statement <<--- break;\n");}
-	| "return" expression_opt ';' {printf("jump_statement <<--- return expression_opt ;\n");}
-	;
-
-	translation_unit : external_declaration {printf("translation_unit <<--- external_declaration\n");}
-	| translation_unit external_declaration {printf("translation_unit <<--- translation_unit external_declaration\n");}
-	;
-
-	external_declaration : function_definition  {printf("external_declaration <<--- function_definition\n");}
-	| declaration 
+	selection_statement : "if" '(' expression ')' M statement     %prec "then" 
 	{
+		backpatch($3->getTrueList(),$5);
+		$$->setNextList(merge($3->getFalseList(),$6->nextList());	
+			printf("selection_statement <<--- if (expression) statement\n");
+		}
+		| "if" '(' expression ')' M statement N "else" M statement 
+		{
+			backpatch($3->getTrueList(),$5);
+			backpatch($3->getFalseList(),$9);
+			vector<int>* temp = merge($6->getNextList(),$7->getNextList());
+			$$->setNextList(merge(temp,$10->getNextList()));
+			printf("selection_statement <<--- if (expression) statement else statement\n");
+		}
+		| "switch" '(' expression ')' statement {printf("selection_statement <<--- switch (expression) statement\n");}
+		;
 
-		printf("external_declaration <<--- definition\n");
-	}
-	;
+		expression_opt : expression 
+		{
+			$$ = $1; printf("expression_opt <<--- expression\n");
+		}
+		| {printf("expression_opt <<--- epsilon\n");}
+		;
 
-	function_definition : declaration_specifiers 
-	{	
-		type_global = $1.getType();
-	} 
-	declarator declaration_list compound_statement 
-	{
-		STCurrent = STStack.back();
-		STStack.pop_back();
-		printf("function_definition <<--- declaration_specifiers declarator declaration_list compound_statement\n");
-	}
-	| declaration_specifiers 
-	{	
-		type_global = $1.getType();
-	} 
-	declarator compound_statement 
-	{
-		STCurrent = STStack.back();
-		STStack.pop_back();
-		printf("function_definition <<---declaration_specifiers declarator compound_statement\n");
-	}
-	;
+		iteration_statement : "while" M '(' expression ')' M statement  
+		{
+			backpatch($7->getNextList(),$2);
+			backpatch($4->getTrueList(),$6);
+			$$->setNextList($4->getFalseList());
+			QuadEntry *qe = new QuadEntry(OP_GOTO,to_string($2));
+			QA->emit(qe);
+			printf("iteration_statement <<--- while (expression) statement \n");
+		}
+		| "do" M statement M "while" '(' expression ')' ';' 
+		{
+			backpatch($7->getTrueList(),$2);
+			backpatch($3->getNextList(),$4);
+			$$->setNextList($7->getFalseList());
+			printf("iteration_statement <<--- do statement while (expression);\n");
+		}
+		| "for" '(' expression_opt ';' expression_opt ';' expression_opt ')' statement {printf("iteration_statement <<--- for (expression_opt ; expression_opt ; expression_opt) statement\n");}
+		| "for" '(' declaration expression_opt';' expression_opt ')' statement {printf("iteration_statement <<--- for(declaration expression_opt; expression_opt) statement\n");}
+		;
 
-	declaration_list : declaration {printf("declaration_list <<--- declaration\n");}
-	| declaration_list declaration {printf("declaration_list <<--- declaration_list declaration\n");}
-	;
+		jump_statement : "goto" IDENTIFIER ';' {printf("jump_statement <<--- goto IDENTIFIER ;\n");}
+		| "continue" ';' {printf("jump_statement <<--- continue;\n");}
+		| "break" ';' {printf("jump_statement <<--- break;\n");}
+		| "return" expression_opt ';' {printf("jump_statement <<--- return expression_opt ;\n");}
+		;
 
-	%%
+		translation_unit : external_declaration {printf("translation_unit <<--- external_declaration\n");}
+		| translation_unit external_declaration {printf("translation_unit <<--- translation_unit external_declaration\n");}
+		;
 
-	void yyerror(const char* s){
-		printf("%s\n",s);
-		exit(-1);
-	}
+		external_declaration : function_definition  {printf("external_declaration <<--- function_definition\n");}
+		| declaration 
+		{
+
+			printf("external_declaration <<--- definition\n");
+		}
+		;
+
+		function_definition : declaration_specifiers 
+		{	
+			type_global = $1.getType();
+		} 
+		declarator declaration_list compound_statement 
+		{
+			STCurrent = STStack.back();
+			STStack.pop_back();
+			printf("function_definition <<--- declaration_specifiers declarator declaration_list compound_statement\n");
+		}
+		| declaration_specifiers 
+		{	
+			type_global = $1.getType();
+		} 
+		declarator compound_statement 
+		{
+			STCurrent = STStack.back();
+			STStack.pop_back();
+			printf("function_definition <<---declaration_specifiers declarator compound_statement\n");
+		}
+		;
+
+		declaration_list : declaration {printf("declaration_list <<--- declaration\n");}
+		| declaration_list declaration {printf("declaration_list <<--- declaration_list declaration\n");}
+		;
+
+		%%
+
+		void yyerror(const char* s){
+			printf("%s\n",s);
+			exit(-1);
+		}
