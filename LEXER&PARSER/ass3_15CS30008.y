@@ -25,9 +25,9 @@
 	%token <strVal> STRING_LITERAL
 	%token <strVal> IDENTIFIER 
 	%type <strVal> unary_operator
-	%type <decl> type_specifier declaration_specifiers init_declarator declarator direct_declarator 
+	%type <decl> init_declarator declarator direct_declarator 
 	%type <exp> expression statement assignment_expression conditional_expression logical_OR_expression logical_AND_expression inclusive_OR_expression exclusive_OR_expression AND_expression equality_expression relational_expression shift_expression additive_expression multiplicative_expression cast_expression unary_expression postfix_expression primary_expression selection_statement iteration_statement initializer
-	%type <type> pointer
+	%type <type> pointer type_specifier declaration_specifiers
 	%type <list> N
 	%type <intergerVal> M
  	%start start
@@ -145,23 +145,45 @@
 	{
 		$$ = $2;
 		SymbolEntry* se = $2->getSymbolEntry();
+		SymbolEntry* se1;
 		type_t* ty = se->getType();
+		QuadEntry *qe;
 		if(strcmp(*$1,"&") == 0){
-			ty->setPointedType(ty);
-			ty->setType(POINTER);
+			type_t* ty1 = new type_t(POINTER,true,false);
+			ty1->setPointedType(ty);
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
 		}
-		else if(strcmp(*$1,"*") == 0){
-
+		else if(strcmp(*$1,"*") == 0 && ty->getTypeName() == POINTER){
+			
 		}
-		se->setType(ty);
+		else if(strcmp(*$1,"-") == 0){
+			
+		}
 		printf("unary_expression <<--- unary_operator cast_expression\n");
 	}
 	;
 
-	unary_operator : '&' {printf("unary_operator <<--- &\n");}
-	| '*' {printf("unary_operator <<--- *\n");}
-	| '+' {printf("unary_operator <<--- +\n");}
-	| '-' {printf("unary_operator <<--- -\n");}
+	unary_operator : '&' 
+	{
+		$$ = $1; 
+		printf("unary_operator <<--- &\n");
+	}
+	| '*' 
+	{
+		$$ = $1; 
+		printf("unary_operator <<--- *\n");
+	}
+	| '+' 
+	{
+		$$ = $1;
+		printf("unary_operator <<--- +\n");
+	}
+	| '-' 
+	{
+		$$ = $1;
+		printf("unary_operator <<--- -\n");
+	}
 	;
 
 	cast_expression : unary_expression 
@@ -571,7 +593,7 @@
 
 	declaration : declaration_specifiers 
 	{	
-		type_global = $1.getType();
+		type_global = $1;
 	} 
 	init_declarator_list ';' {printf("declaration <<--- declaration_specifiers init_declarator_list ;\n");}
 	| declaration_specifiers ';' {printf("declaration <<--- declaration_specifiers ;\n");}
@@ -589,43 +611,40 @@
 	}
 	;
 
-	init_declarator_list : init_declarator  
-	{
-		SymbolEntry *se = STCurrent->gentemp($1);
-		if($1->isInitialized())
-		se->initialize($1->getInitValue());
-		printf("init_declarator_list <<--- init_declarator\n");
-	}
-	| init_declarator_list ',' init_declarator 
-	{
-		SymbolEntry *se = STCurrent->gentemp($3);
-		if($3->isInitialized())
-		se->initialize($3->getInitValue());
-		printf("init_declarator_list <<--- init_declarator_list , init_declarator\n");
-	}
+	init_declarator_list : init_declarator { printf("init_declarator_list <<--- init_declarator\n");}
+	| init_declarator_list ',' init_declarator { printf("init_declarator_list <<--- init_declarator_list , init_declarator\n");}
 	;
 
 	init_declarator : declarator 
 	{
-		$$ = $1;
+		SymbolEntry *se = STCurrent->gentemp($1);
 		printf("init_declarator <<--- declarator\n");
 	}
 	| declarator '=' initializer {
-		$$ = $1;
-		SymbolEntry* se = $3->getSymbolEntry();
-		$$->setInitValue(se->getInitialValue());
+		SymbolEntry *se = STCurrent->gentemp($1);
+		SymbolEntry *se1 = $3->getSymbolEntry();
+		QuadEntry *qe;
+		type_t* ty1 = declarator->getType();
+		type_n ty_N = ty1->getTypeName();
+		if(ty_N == POINTER)
+
+		else if(ty_N == MATRIX)
+
+		else
+			qe = new QuadEntry(OP_COPY,se->getName(),se1->getName());
+		QA->emit(qe);
 		printf("init_declarator <<--- declarator = initializer\n");
 	}
 	;
 
 	type_specifier : "void" 
 	{
-		$$ = new decl_t(VOID);
+		$$ = new type_t(VOID,false,false);
 		printf("type_specifier : void\n");
 	}
 	| "char" 
 	{
-		$$ = new decl_t(CHAR);
+		$$ = new type_t(CHAR,false,false);
 		printf("type_specifier : char\n");
 	}
 	| "short" 
@@ -634,19 +653,19 @@
 	}
 	| "int"  
 	{
-		$$ = new decl_t(INT);
+		$$ = new type_t(INT,false,false);
 		printf("type_specifier : int\n");
 	}
 	| "long"  {printf("type_specifier : long\n");}
 	| "float"  {printf("type_specifier : float\n");}
 	| "double"  
 	{
-		$$ = new decl_t(DOUBLE);
+		$$ = new type_t(DOUBLE,false,false);
 		printf("type_specifier : double\n");
 	}
 	| "Matrix"  
 	{
-		$$ = new decl_t(MATRIX);
+		$$ = new type_t(MATRIX,false,true);
 		printf("type_specifier : Matrix\n");
 	}
 	| "signed"  {printf("type_specifier : signed\n");}

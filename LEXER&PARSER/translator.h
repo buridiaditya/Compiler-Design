@@ -43,6 +43,7 @@ typedef enum {
 	OP_XOR,
 	OP_OR,
 	OP_COPY,
+	OP_DE_REF,
 	OP_IF_LT_GOTO,
 	OP_IF_GT_GOTO,
 	OP_IF_LTE_GOTO,
