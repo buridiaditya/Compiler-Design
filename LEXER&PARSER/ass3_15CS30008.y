@@ -30,7 +30,7 @@
 	%type <type> pointer type_specifier declaration_specifiers
 	%type <list> N
 	%type <intergerVal> M
- 	%start start
+	%start start
 
 	%%
 
@@ -55,32 +55,26 @@
 	}
 	|INT_CONSTANT 
 	{	
-		type_t* typeT = new type_t(INT,false,false);
-		SymbolEntry* se = STCurrent->gentemp(typeT);
-		$$ = new exp_t(se);
-		string* s = new string(to_string($1));
-		QuadEntry* qe = new QuadEntry(OP_COPY,se->getName(),&s);
-		QA->emit(qe);
+		$$ = new exp_t();
+		init_t i;
+		i.intVal = $1;
+		$$.setConstant(true,i,INT);
 		printf("primary_expression <<--- CONSTANT\n");
 	}
 	|CHAR_CONSTANT 
 	{
-		type_t* typeT = new type_t(CHAR,false,false);
-		SymbolEntry* se = STCurrent->gentemp(typeT);
-		$$ = new exp_t(se);
-		string* s = new string(to_string($1));
-		QuadEntry* qe = new QuadEntry(OP_COPY,se->getName(),&s);
-		QA->emit(qe);
+		$$ = new exp_t();
+		init_t i;
+		i.charVal = $1;
+		$$.setConstant(true,i,CHAR);
 		printf("primary_expression <<--- CONSTANT\n");
 	}
 	|DOUBLE_CONSTANT
 	{
-		type_t* typeT = new type_t(DOUBLE,false,false);
-		SymbolEntry* se = STCurrent->gentemp(typeT);
-		$$ = new exp_t(se);
-		string* s = new string(to_string($1));
-		QuadEntry* qe = new QuadEntry(OP_COPY,se->getName(),&s);
-		QA->emit(qe);
+		$$ = new exp_t();
+		init_t i;
+		i.doubleVal = $1;
+		$$.setConstant(true,i,DOUBLE);
 		printf("primary_expression <<--- CONSTANT\n");
 	}
 	|STRING_LITERAL 
@@ -104,34 +98,66 @@
 		$$ = $1;
 		SymbolEntry* se = $1->getSymbolEntry();
 		SymbolEntry* se1 = $3->getSymbolEntry();
-
-		type_t* ty = $1->getArrayType();
-		SymbolEntry* se3 = new SymbolEntry(INT);
-		SymbolEntry* se2 = STCurrent->gentemp(ty);
+		SymbolEntry* se2;
+		type_t* ty = $1->getType();
+		type_t *ty1 = new type_t(INT);
+		ty = ty->getArrayType();
+		if(ty == NULL)
+			yyerror("Array Element Does not Exist");
 		int width_ = getWidth(ty);
-
+		SymbolEntry* se3 = STCurrent->gentemp(ty1);
 		QuadEntry* qe0 = new QuadEntry(OP_MUL,se3->getName(),se1->getName(),to_string(width_));	
-		
-		QuadEntry* qe1 = new QuadEntry(OP_ADD,se2->getName(),se->getName(),se3->getName());	
-		
+		QA->emit(qe0);
+		if($1->getArrayAccess()){
+			se2->getArraySum();
+			qe0 = new QuadEntry(OP_ADD,se3->getName(),se3->getName(),se2->getName());
+			QA->emit(qe0);
+		}
+		se2 = new SymbolEntry(se);
+		se2->setType(ty);
+		$$->setArrayAccess(true,se3);
 		$$->setSymbolEntry(se2);
 		printf("postfix_expression <<--- postfix_expression[expression]\n");
 	}
-	| postfix_expression '(' argument_expression_list ')' {printf("postfix_expression <<--- postfix_expression (argument_expression_list) \n");}
-	| postfix_expression '(' ')' {printf("postfix_expression <<--- postfix_expression () \n");}
+	| postfix_expression '(' argument_expression_list ')' 
+	{
+		$$ = $1;
+		$$->setFunctionCall(true,$3);
+		printf("postfix_expression <<--- postfix_expression (argument_expression_list) \n");
+	}
+	| postfix_expression '(' ')' 
+	{
+		$$ = $1;
+		$$->setFunctionCall(true,0);
+		printf("postfix_expression <<--- postfix_expression () \n");
+	}
 	| postfix_expression '.' IDENTIFIER  {printf("postfix_expression <<--- postfix_expression . IDENTIFIER \n");}
 	| postfix_expression "->" IDENTIFIER {printf("postfix_expression <<--- postfix_expression -> IDENTIFIER \n");}
 	| postfix_expression "++" {printf("postfix_expression <<--- postfix_expression ++\n");}
 	| postfix_expression "--" {printf("postfix_expression <<--- postfix_expression --\n");}
 	| postfix_expression ".'" 
 	{
-		$$ = $1;
+		// TODO
 		printf("postfix_expression <<--- postfix_expression .'\n");
 	}
 	;
 
-	argument_expression_list : assignment_expression  {printf("argument_expression_list <<--- assignment_expression \n");}
-	| argument_expression_list ',' assignment_expression  {printf("argument_expression_list <<--- argument_expression_list , assignment_expression\n");}
+	argument_expression_list : assignment_expression  
+	{
+		$$ = 1;
+		SymbolEntry *se = $1->getSymbolEntry();
+		QuadEntry *qe = new QuadEntry(OP_PARAM,se->getName());
+		QA->emit(qe);
+		printf("argument_expression_list <<--- assignment_expression \n");
+	}
+	| argument_expression_list ',' assignment_expression  
+	{
+		$$ = $1 +1;
+		SymbolEntry *se = $1->getSymbolEntry();
+		QuadEntry *qe = new QuadEntry(OP_PARAM,se->getName());
+		QA->emit(qe);
+		printf("argument_expression_list <<--- argument_expression_list , assignment_expression\n");
+	}
 	;
 
 	unary_expression : 	postfix_expression   
@@ -139,8 +165,64 @@
 		$$ = $1; 
 		printf("unary_expression <<--- postfix_expression  \n");
 	}
-	| "++" unary_expression {printf("unary_expression <<--- ++ unary_expression  \n");}
-	| "--"  unary_expression {printf("unary_expression <<--- -- unary_expression \n");}
+	| "++" unary_expression 
+	{
+		SymbolEntry *se = $2->getSymbolEntry();
+		SymbolEntry *se1
+		QuadEntry *qe;
+		if($1->isArrayAccess()){
+			se1 = STCurrent->gentemp(se->getType());
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+			qe = new QuadEntry(OP_INCR,se1->getName());
+			QA->emit(qe);			
+			$$ = $2;
+			$$->setArrayAccess(false,NULL);
+		}
+		else if($1->isConstant()){
+			type_t *ty = new type_t($2->getConstantType());
+			se1 = STCurrent->gentemp(ty);
+			se1->initialize($2->getConstantVal());
+			qe = new QuadEntry(OP_INCR,se1->getName());
+			QA->emit(qe);
+			$$ = $2;
+			$$->setConstant(false);
+		}
+		else{
+			qe = new QuadEntry(OP_INCR,se->getName());	
+			QA->emit(qe);
+		}
+		printf("unary_expression <<--- ++ unary_expression  \n");
+	}
+	| "--"  unary_expression 
+	{
+		SymbolEntry *se = $2->getSymbolEntry();
+		SymbolEntry *se1
+		QuadEntry *qe;
+		if($1->isArrayAccess()){
+			se1 = STCurrent->gentemp(se->getType());
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+			qe = new QuadEntry(OP_DECR,se1->getName());
+			QA->emit(qe);
+			$$ = $2;
+			$$->setArrayAccess(false,NULL);
+		}
+		else if($1->isConstant()){
+			type_t *ty = new type_t($2->getConstantType());
+			se1 = STCurrent->gentemp(ty);
+			se1->initialize($2->getConstantVal());
+			qe = new QuadEntry(OP_DECR,se1->getName());
+			QA->emit(qe);
+			$$ = $2;
+			$$->setConstant(false);
+		}
+		else{
+			qe = new QuadEntry(OP_DECR,se->getName());	
+			QA->emit(qe);
+		}
+		printf("unary_expression <<--- -- unary_expression \n");
+	}
 	| unary_operator cast_expression 
 	{
 		$$ = $2;
@@ -148,17 +230,36 @@
 		SymbolEntry* se1;
 		type_t* ty = se->getType();
 		QuadEntry *qe;
-		if(strcmp(*$1,"&") == 0){
-			type_t* ty1 = new type_t(POINTER,true,false);
-			ty1->setPointedType(ty);
-			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
-		}
-		else if(strcmp(*$1,"*") == 0 && ty->getTypeName() == POINTER){
-			
-		}
-		else if(strcmp(*$1,"-") == 0){
-			
+		if(strcmp(*$1,"+") != 0){
+			if($2->isArrayAccess()){
+				se1 = STCurrent->gentemp(se->getType());
+				qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+				QA->emit(qe);
+				$$->setArrayAccess(false,NULL);
+				$$->setSymbolEntry(se1);
+			}
+			else if($2->isConstant()){
+				type_t *ty = new type_t($2->getConstantType());
+				se1 = STCurrent->gentemp(ty);
+				se1->initialize($2->getConstantVal());
+				$$->setConstant(false);
+				$$->setSymbolEntry(se1);
+			}
+			if(strcmp(*$1,"&") == 0){
+				if($2->isConstant())
+					yyerror("Invalid reference");
+				$$->setAddress(true);
+			}
+			else if(strcmp(*$1,"*") == 0 && ty->getTypeName() == POINTER){
+				if($2->isConstant())
+					yyerror("Invalid reference");
+				$$->setDeReference(true);
+			}
+			else if(strcmp(*$1,"-") == 0){
+				qe = new QuadEntry(OP_NEG,se1->getName(),se1->getName());
+				QA->emit(qe);
+				$$->setSymbolEntry(se1);				
+			}
 		}
 		printf("unary_expression <<--- unary_operator cast_expression\n");
 	}
@@ -200,49 +301,253 @@
 	}
 	| multiplicative_expression '*' cast_expression 
 	{
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		if(typecheck(t1,t2)){
-			se = STCurrent->gentemp(t1);
-			qe = new QuadEntry(OP_MUL,se->getName(),s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
 		}
-		$$ = $1;
-		$$->setSymbolEntry(se);
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_MUL,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
 		printf("multiplicative_expression <<--- multiplicative_expression * cast_expression \n");
 	}
 	| multiplicative_expression '/' cast_expression 
 	{
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		if(typecheck(t1,t2)){
-			se = STCurrent->gentemp(t1);
-			qe = new QuadEntry(OP_DIV,se->getName(),s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
 		}
-		$$ = $1;
-		$$->setSymbolEntry(se);
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DIV,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
 		printf("multiplicative_expression <<--- multiplicative_expression / cast_expression\n");
 	}
 	| multiplicative_expression '%' cast_expression {
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		if(typecheck(t1,t2) && ){
-			se = STCurrent->gentemp(t1);
-			qe = new QuadEntry(OP_MOD,se->getName(),s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
 		}
-		$$ = $1;
-		$$->setSymbolEntry(se);
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_MOD,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
 		printf("multiplicative_expression <<--- multiplicative_expression %% cast_expression\n");
 	}
 	;
@@ -254,34 +559,170 @@
 	}
 	| additive_expression '+' multiplicative_expression 
 	{
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		if(typecheck(t1,t2)){
-			se = STCurrent->gentemp(t1);
-			qe = new QuadEntry(OP_ADD,se->getName(),s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
 		}
-		$$ = $1;
-		$$->setSymbolEntry(se);
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ADD,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
 		printf("additive_expression <<--- additive_expression + multiplicative_expression\n");
 	}
 	| additive_expression '-' multiplicative_expression 
 	{
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		if(typecheck(t1,t2)){
-			se = STCurrent->gentemp(t1);
-			qe = new QuadEntry(OP_SUB,se->getName(),s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
 		}
-		$$ = $1;
-		$$->setSymbolEntry(se);
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_SUB,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
 		printf("additive_expression <<--- additive_expression - multiplicative_expression\n");
 	}
 	;
@@ -293,34 +734,170 @@
 	}
 	| shift_expression "<<" additive_expression 
 	{
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		if(typecheck(t1,t2)){
-			se = STCurrent->gentemp(t1);
-			qe = new QuadEntry(OP_LSFT,se->getName(),s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
 		}
-		$$ = $1;
-		$$->setSymbolEntry(se);
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(ty2->getTypeName() == INT && typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_LFST,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
 		printf("shift_expression <<--- shift_expression << additive_expression\n");
 	}
 	| shift_expression ">>" additive_expression 
 	{
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		if(typecheck(t1,t2)){
-			se = STCurrent->gentemp(t1);
-			qe = new QuadEntry(OP_RSFT,se->getName(),s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
 		}
-		$$ = $1;
-		$$->setSymbolEntry(se);
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(ty2->getTypeName() == INT && typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_RSFT,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
 		printf("shift_expression <<--- shift_expression >> additive_expression\n");
 	}
 	;
@@ -332,18 +909,88 @@
 	}
 	| relational_expression '<' shift_expression  
 	{
-		$$ = $1;
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		$$->setTrueList(makelist(QA->getSize()));
-		if(typecheck(t1,t2)){	
-			qe = new QuadEntry(OP_IF_LT_GOTO,"",s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
 			QA->emit(qe);
 		}
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_IF_LT_GOTO,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			$$->setTrueList(makelist(QA->getSize()));
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
+
 		$$->setFalseList(makelist(QA->getSize()));
 		qe = new QuadEntry(OP_GOTO,"");
 		QA->emit(qe);
@@ -351,18 +998,88 @@
 	}
 	| relational_expression '>' shift_expression  
 	{
-		$$ = $1;
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		$$->setTrueList(makelist(QA->getSize()));
-		if(typecheck(t1,t2)){
-			qe = new QuadEntry(OP_IF_GT_GOTO,"",s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
 			QA->emit(qe);
 		}
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_IF_GT_GOTO,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			$$->setTrueList(makelist(QA->getSize()));
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
+
 		$$->setFalseList(makelist(QA->getSize()));
 		qe = new QuadEntry(OP_GOTO,"");
 		QA->emit(qe);
@@ -370,18 +1087,88 @@
 	}
 	| relational_expression "<=" shift_expression  
 	{
-		$$ = $1;
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		$$->setTrueList(makelist(QA->getSize()));
-		if(typecheck(t1,t2)){
-			qe = new QuadEntry(OP_IF_LTE_GOTO,"",s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
 			QA->emit(qe);
 		}
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_IF_LTE_GOTO,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			$$->setTrueList(makelist(QA->getSize()));
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
+
 		$$->setFalseList(makelist(QA->getSize()));
 		qe = new QuadEntry(OP_GOTO,"");
 		QA->emit(qe);
@@ -389,18 +1176,88 @@
 	}
 	| relational_expression ">=" shift_expression 
 	{
-		$$ = $1;
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		$$->setTrueList(makelist(QA->getSize()));
-		if(typecheck(t1,t2)){
-			qe = new QuadEntry(OP_IF_GTE_GOTO,"",s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
 			QA->emit(qe);
 		}
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_IF_GTE_GOTO,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			$$->setTrueList(makelist(QA->getSize()));
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
+
 		$$->setFalseList(makelist(QA->getSize()));
 		qe = new QuadEntry(OP_GOTO,"");
 		QA->emit(qe);
@@ -415,18 +1272,88 @@
 	}
 	| equality_expression "==" relational_expression  
 	{
-		$$ = $1;
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		$$->setTrueList(makelist(QA->getSize()));
-		if(typecheck(t1,t2)){
-			qe = new QuadEntry(OP_IF_EQ_GOTO,"",s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
 			QA->emit(qe);
 		}
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_IF_EQ_GOTO,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			$$->setTrueList(makelist(QA->getSize()));
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
+
 		$$->setFalseList(makelist(QA->getSize()));
 		qe = new QuadEntry(OP_GOTO,"");
 		QA->emit(qe);
@@ -434,18 +1361,88 @@
 	}
 	| equality_expression "!=" relational_expression  
 	{
-		$$ = $1;
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		$$->setTrueList(makelist(QA->getSize()));
-		if(typecheck(t1,t2)){
-			qe = new QuadEntry(OP_IF_NEQ_GOTO,"",s1->getName(),s2->getName());
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
 			QA->emit(qe);
 		}
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if(typecheck(ty1,ty2)){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_IF_NEQ_GOTO,se->getName(),s1->getName(),s2->getName());
+			$$ = new exp_t(se)
+			$$->setSymbolEntry(se);
+			$$->setTrueList(makelist(QA->getSize()));
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
+
 		$$->setFalseList(makelist(QA->getSize()));
 		qe = new QuadEntry(OP_GOTO,"");
 		QA->emit(qe);
@@ -460,16 +1457,84 @@
 	}
 	| AND_expression '&' equality_expression 
 	{
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		se = STCurrent->gentemp(t1);
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		
+		se = STCurrent->gentemp(ty1);
 		qe = new QuadEntry(OP_AND,se->getName(),s1->getName(),s2->getName());
-		$$ = $1;
+		$$ = new exp_t(se)
 		$$->setSymbolEntry(se);
+		QA->emit(qe);
+		
 		printf("AND_expression <<--- AND_expression & equality_expression\n");
 	}
 	;
@@ -481,16 +1546,84 @@
 	}
 	| exclusive_OR_expression '^' AND_expression  
 	{
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		se = STCurrent->gentemp(t1);
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		
+		se = STCurrent->gentemp(ty1);
 		qe = new QuadEntry(OP_XOR,se->getName(),s1->getName(),s2->getName());
-		$$ = $1;
+		$$ = new exp_t(se)
 		$$->setSymbolEntry(se);
+		QA->emit(qe);
+		
 		printf("exclusive_OR_expression <<--- exclusive_OR_expression ^ AND_expression\n");
 	}
 	;
@@ -502,16 +1635,84 @@
 	}
 	| inclusive_OR_expression '|' exclusive_OR_expression 
 	{
-		SymbolEntry *s1 = $1->getSymbolEntry();
-		SymbolEntry *s2 = $3->getSymbolEntry();
-		SymbolEntry *se;
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		type_t* t1 = s1->getType();
-		type_t* t2 = s2->getType();
-		se = STCurrent->gentemp(t1);
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		if($1->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($1->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($1->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($1->isConstant()){
+			ty1 = new type_t($1->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
+			se1->initialize($1->getConstantVal());
+		}
+		else if($1->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($1->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		if($3->isArrayAccess()){
+			ty2 = se_->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			QA->emit(qe);
+		}
+		else if($3->isDeReference()){
+			ty2 = se2->getType();
+			ty2 = ty2->getPointedType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			QA->emit(qe);
+		}
+		else if($3->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($3->isConstant()){
+			ty2 = new type_t($3->getConstantType());
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($3->getConstantVal());
+		}
+		else if($3->isFunctionCall()){
+			se2 = ST->lookup(se_->getName());
+			SymbolTable *st = se2->getNestedTable();
+			se2 = st->lookup("retVal");
+			ty2 = se2->getType();
+			se2 = STCurrent->gentemp(ty2);
+			qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+			QA->emit(qe);
+		}
+
+		
+		se = STCurrent->gentemp(ty1);
 		qe = new QuadEntry(OP_OR,se->getName(),s1->getName(),s2->getName());
-		$$ = $1;
+		$$ = new exp_t(se)
 		$$->setSymbolEntry(se);
+		QA->emit(qe);
+		
 		printf("inclusive_OR_expression <<--- inclusive_OR_expression | exclusive_OR_expression \n");
 	}
 	;
@@ -617,22 +1818,66 @@
 
 	init_declarator : declarator 
 	{
-		SymbolEntry *se = STCurrent->gentemp($1);
+		type_t *ty = $1->getType();
+		SymbolEntry *se;
+		if(ty->getTypeName() == FUNCTION){
+			se = STStack.back()->gentemp($1);
+			se->setNestedTable(STCurrent);
+			STCurrent = STStack.back();
+			STStack.pop_back();
+		}
+		else	
+			se = STCurrent->gentemp($1);
 		printf("init_declarator <<--- declarator\n");
 	}
 	| declarator '=' initializer {
 		SymbolEntry *se = STCurrent->gentemp($1);
 		SymbolEntry *se1 = $3->getSymbolEntry();
 		QuadEntry *qe;
-		type_t* ty1 = declarator->getType();
+		type_t* ty1 = $1->getType();
 		type_n ty_N = ty1->getTypeName();
-		if(ty_N == POINTER)
-
-		else if(ty_N == MATRIX)
-
-		else
-			qe = new QuadEntry(OP_COPY,se->getName(),se1->getName());
-		QA->emit(qe);
+		if(ty_N == POINTER){
+			if($3->isAddress()){
+				type_t * ty2 = new type_t(POINTER,true,false);
+				ty2->setPointerType(se1->getType());
+				SymbolEntry *se2 = STCurrent->gentemp(ty2);
+				qe = new QuadEntry(OP_REF,se2->getName(),se1->getName());
+				QA->emit(qe);
+				qe = new QuadEntry(OP_COPY,se->getName(),se2->getName());	
+				QA->emit(qe);
+			}
+			else if($3->isDeReference()){
+				type_t * ty2 = se1->getType();
+				SymbolEntry *se2 = STCurrent->gentemp(ty2->getPointedType());
+				qe = new QuadEntry(OP_DE_REF,se2->getName(),se1->getName());
+				QA->emit(qe);
+				qe = new QuadEntry(OP_COPY,se->getName(),se2->getName());	
+				QA->emit(qe);
+			}
+			else if($3->isConstant())
+			yyerror("Invalid Declaration");
+			else{
+				qe = new QuadEntry(OP_COPY,se->getName(),se1->getName());	
+				QA->emit(qe);
+			}
+		}
+		else if(ty_N == MATRIX){
+			// TODO
+		}
+		else if{
+			if($3->isAddress())
+				yyerror("Invalid Declaration");
+			else if($3->isDeReference()){
+				qe = new QuadEntry(OP_DE_REF,se->getName(),se1->getName());
+				QA->emit(qe);
+			}
+			else if($3->isConstant())
+				se->initialize($3->getConstantVal());
+			else{
+				qe = new QuadEntry(OP_COPY,se->getName(),se1->getName());	
+				QA->emit(qe);
+			}
+		}
 		printf("init_declarator <<--- declarator = initializer\n");
 	}
 	;
@@ -821,7 +2066,7 @@
 	initializer_row : initializer  {printf("initializer_row <<--- initializer\n");}
 	| designation initializer {printf("initializer_row <<--- designation initializer\n");}
 	| initializer_row ',' initializer {printf("initializer_row <<---  initializer_row , initializer\n");}
-	;l
+	;
 
 	designation : designator_list '='   {printf("designation <<--- designator_list =\n");} ;
 
@@ -836,8 +2081,16 @@
 	statement : labeled_statement  {printf("statement <<--- labeled_statement\n");}
 	| compound_statement {printf("statement <<--- compound_statement\n");}
 	| expression_statement {printf("statement <<--- expression_statement\n");}
-	| selection_statement	{printf("statement <<--- selection_statement\n");}
-	| iteration_statement	{printf("statement <<--- iteration_statement\n");}
+	| selection_statement	
+	{
+		$$ = $1;
+		printf("statement <<--- selection_statement\n");
+	}
+	| iteration_statement	
+	{
+		$$ = $1;
+		printf("statement <<--- iteration_statement\n");
+	}
 	| jump_statement	{printf("statement <<--- jump_statement\n");}
 	;
 
@@ -847,112 +2100,160 @@
 	;
 
 	compound_statement : '{' '}'  {printf("compound_statement : {}\n");}
-	| '{' block_item_list '}'	{printf("compound_statement : {block_item_list}\n");}
+	| '{' block_item_list M'}'	
+	{
+		if($2 != NULL)
+			backpatch($2->getNextList(),$3);
+		printf("compound_statement : {block_item_list}\n");
+	}
 	;
 
-	block_item_list : block_item {printf("block_item_list <<--- block_item\n");}
-	| block_item_list block_item {printf("block_item_list <<--- block_item_list block_item\n");}
+	block_item_list : block_item 
+	{
+		$$ = $1;
+		printf("block_item_list <<--- block_item\n");
+	}
+	| block_item_list M block_item 
+	{
+		if($1 != NULL){
+			backpatch($1->getNextList(),$2);
+			$$->setNextList($3->getNextList());
+		}
+		else
+			$$ = NULL;
+		printf("block_item_list <<--- block_item_list block_item\n");
+	}
 	;
 
-	block_item : declaration {printf("block_item <<--- declaration\n");}
-	| statement {printf("block_item <<--- statement\n");}
+	block_item : declaration 
+	{
+		$$ = NULL;
+		printf("block_item <<--- declaration\n");
+	}
+	| statement 
+	{
+		$$ = $1;
+		printf("block_item <<--- statement\n");
+	}
 	;
 
 	expression_statement : ';' {printf("expression_statement <<--- ;\n");}
 	| expression ';' {printf("expression_statement <<--- expression ;\n");}
 	;
 
-	selection_statement : "if" '(' expression ')' M statement     %prec "then" 
+	selection_statement : "if" '(' expression ')' M statement %prec "then" 
 	{
 		backpatch($3->getTrueList(),$5);
 		$$->setNextList(merge($3->getFalseList(),$6->nextList());	
-			printf("selection_statement <<--- if (expression) statement\n");
+		printf("selection_statement <<--- if (expression) statement\n");
+	}
+	| "if" '(' expression ')' M statement N "else" M statement 
+	{
+		backpatch($3->getTrueList(),$5);
+		backpatch($3->getFalseList(),$9);
+		vector<int>* temp = merge($6->getNextList(),$7->getNextList());
+		$$->setNextList(merge(temp,$10->getNextList()));
+		printf("selection_statement <<--- if (expression) statement else statement\n");
+	}
+	| "switch" '(' expression ')' statement {printf("selection_statement <<--- switch (expression) statement\n");}
+	;
+
+	expression_opt : expression 
+	{
+		$$ = $1; printf("expression_opt <<--- expression\n");
+	}
+	| 
+	{
+		$$ = NULL;
+		printf("expression_opt <<--- epsilon\n");
+	}
+	;
+
+	iteration_statement : "while" M '(' expression ')' M statement  
+	{
+		backpatch($7->getNextList(),$2);
+		backpatch($4->getTrueList(),$6);
+		$$->setNextList($4->getFalseList());
+		QuadEntry *qe = new QuadEntry(OP_GOTO,to_string($2));
+		QA->emit(qe);
+		printf("iteration_statement <<--- while (expression) statement \n");
+	}
+	| "do" M statement M "while" '(' expression ')' ';' 
+	{
+		backpatch($7->getTrueList(),$2);
+		backpatch($3->getNextList(),$4);
+		$$->setNextList($7->getFalseList());
+		printf("iteration_statement <<--- do statement while (expression);\n");
+	}
+	| "for" '(' expression_opt ';' expression_opt ';' expression_opt ')' statement {printf("iteration_statement <<--- for (expression_opt ; expression_opt ; expression_opt) statement\n");}
+	| "for" '(' declaration expression_opt';' expression_opt ')' statement {printf("iteration_statement <<--- for(declaration expression_opt; expression_opt) statement\n");}
+	;
+
+	jump_statement : "goto" IDENTIFIER ';' {printf("jump_statement <<--- goto IDENTIFIER ;\n");}
+	| "continue" ';' {printf("jump_statement <<--- continue;\n");}
+	| "break" ';' {printf("jump_statement <<--- break;\n");}
+	| "return" expression_opt ';' 
+	{
+		QuadEntry *qe;
+		if( $2 == NULL )
+			qe = new QuadEntry(OP_RETURN);
+		else{
+			string *name = new string("retVal");
+			SymbolEntry *se = STCurrent->lookup(name);
+			SymbolEntry *se1 = $2->getSymbolEntry();
+			se->initialize(se1->getInitialValue());
+			qe = new QuadEntry(OP_RETURN,se1->getName());
 		}
-		| "if" '(' expression ')' M statement N "else" M statement 
-		{
-			backpatch($3->getTrueList(),$5);
-			backpatch($3->getFalseList(),$9);
-			vector<int>* temp = merge($6->getNextList(),$7->getNextList());
-			$$->setNextList(merge(temp,$10->getNextList()));
-			printf("selection_statement <<--- if (expression) statement else statement\n");
-		}
-		| "switch" '(' expression ')' statement {printf("selection_statement <<--- switch (expression) statement\n");}
-		;
+		printf("jump_statement <<--- return expression_opt ;\n");
+	}
+	;
 
-		expression_opt : expression 
-		{
-			$$ = $1; printf("expression_opt <<--- expression\n");
-		}
-		| {printf("expression_opt <<--- epsilon\n");}
-		;
+	translation_unit : external_declaration {printf("translation_unit <<--- external_declaration\n");}
+	| translation_unit external_declaration {printf("translation_unit <<--- translation_unit external_declaration\n");}
+	;
 
-		iteration_statement : "while" M '(' expression ')' M statement  
-		{
-			backpatch($7->getNextList(),$2);
-			backpatch($4->getTrueList(),$6);
-			$$->setNextList($4->getFalseList());
-			QuadEntry *qe = new QuadEntry(OP_GOTO,to_string($2));
-			QA->emit(qe);
-			printf("iteration_statement <<--- while (expression) statement \n");
-		}
-		| "do" M statement M "while" '(' expression ')' ';' 
-		{
-			backpatch($7->getTrueList(),$2);
-			backpatch($3->getNextList(),$4);
-			$$->setNextList($7->getFalseList());
-			printf("iteration_statement <<--- do statement while (expression);\n");
-		}
-		| "for" '(' expression_opt ';' expression_opt ';' expression_opt ')' statement {printf("iteration_statement <<--- for (expression_opt ; expression_opt ; expression_opt) statement\n");}
-		| "for" '(' declaration expression_opt';' expression_opt ')' statement {printf("iteration_statement <<--- for(declaration expression_opt; expression_opt) statement\n");}
-		;
+	external_declaration : function_definition  {printf("external_declaration <<--- function_definition\n");}
+	| declaration 
+	{
 
-		jump_statement : "goto" IDENTIFIER ';' {printf("jump_statement <<--- goto IDENTIFIER ;\n");}
-		| "continue" ';' {printf("jump_statement <<--- continue;\n");}
-		| "break" ';' {printf("jump_statement <<--- break;\n");}
-		| "return" expression_opt ';' {printf("jump_statement <<--- return expression_opt ;\n");}
-		;
+		printf("external_declaration <<--- definition\n");
+	}
+	;
 
-		translation_unit : external_declaration {printf("translation_unit <<--- external_declaration\n");}
-		| translation_unit external_declaration {printf("translation_unit <<--- translation_unit external_declaration\n");}
-		;
+	function_definition : declaration_specifiers 
+	{	
+		type_global = $1;
+	} 
+	declarator declaration_list compound_statement 
+	{
+		SymbolEntry *se = STStack.back()->gentemp($3);
+		se->setNestedTable(STCurrent);
+		STCurrent = STStack.back();
+		STStack.pop_back();
+		printf("function_definition <<--- declaration_specifiers declarator declaration_list compound_statement\n");
+	}
+	| declaration_specifiers 
+	{	
+		type_global = $1.getType();
+	} 
+	declarator 
+	compound_statement 
+	{
+		SymbolEntry *se = STStack.back()->gentemp($3);
+		se->setNestedTable(STCurrent);
+		STCurrent = STStack.back();
+		STStack.pop_back();
+		printf("function_definition <<---declaration_specifiers declarator compound_statement\n");
+	}
+	;
 
-		external_declaration : function_definition  {printf("external_declaration <<--- function_definition\n");}
-		| declaration 
-		{
+	declaration_list : declaration {printf("declaration_list <<--- declaration\n");}
+	| declaration_list declaration {printf("declaration_list <<--- declaration_list declaration\n");}
+	;
 
-			printf("external_declaration <<--- definition\n");
-		}
-		;
+	%%
 
-		function_definition : declaration_specifiers 
-		{	
-			type_global = $1.getType();
-		} 
-		declarator declaration_list compound_statement 
-		{
-			STCurrent = STStack.back();
-			STStack.pop_back();
-			printf("function_definition <<--- declaration_specifiers declarator declaration_list compound_statement\n");
-		}
-		| declaration_specifiers 
-		{	
-			type_global = $1.getType();
-		} 
-		declarator compound_statement 
-		{
-			STCurrent = STStack.back();
-			STStack.pop_back();
-			printf("function_definition <<---declaration_specifiers declarator compound_statement\n");
-		}
-		;
-
-		declaration_list : declaration {printf("declaration_list <<--- declaration\n");}
-		| declaration_list declaration {printf("declaration_list <<--- declaration_list declaration\n");}
-		;
-
-		%%
-
-		void yyerror(const char* s){
-			printf("%s\n",s);
-			exit(-1);
-		}
+	void yyerror(const char* s){
+		printf("%s\n",s);
+		exit(-1);
+	}

@@ -139,6 +139,15 @@ vector<int>* exp_t::getFalseList()
 	return falseList;
 
 ///////////// SYMBOL ENTRY //////////////////
+SymbolEntry::SymbolEntry(SymbolEntry* se){
+	offset = se->getOffset();
+	size = se->getWidth();
+	initialized = se->checkinitialized();
+	name = se->getName();
+	type = se->getType();
+	nestedTable = se->getNestedTable();
+}
+
 SymbolEntry::SymbolEntry(string* name_,type_t* type_, int width_,int offset_,SymbolTable* table){
 	offset = offset_;
 	size = width_;

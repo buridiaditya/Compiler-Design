@@ -27,6 +27,7 @@ typedef enum{
 
 typedef enum {
 	OP_ADD,
+	op_NEG,
 	OP_SUB,
 	OP_LSFT,
 	OP_RSFT,
@@ -52,7 +53,13 @@ typedef enum {
 	OP_IF_NEQ_GOTO,
 	OP_IF_GOTO,
 	OP_IFF_GOTO,
-	OP_GOTO
+	OP_ARR_ACC,
+	OP_INCR,
+	OP_DECR,
+	OP_GOTO,
+	OP_PARAM,
+	OP_CALL,
+	OP_RETURN
 }OPCode;
 
 union init_t{
@@ -87,9 +94,10 @@ private:
 
 type_t *type_global = new type_t();
 
-
 class SymbolEntry{
 public:
+	SymbolEntry();
+	SymbolEntry(SymbolEntry* se);
 	SymbolEntry(string* name_,type_t* type_,int width_,int offset_,SymbolTable* table);
 	SymbolEntry(string* name_,type_t* type_,int width_,int offset_,SymbolTable* table,init_t init);
 	void setName(string* name);
@@ -163,12 +171,36 @@ public:
 	vector<int>* getTrueList();
 	vector<int>* getFalseList();
 	vector<int>* getNextList();
-	SymbolEntry* setSymbolEntry();
+	SymbolEntry* getArraySum();
+	bool isAddress();
+	bool isDeReference();
+	bool isConstant();
+	bool isArrayAccess();
+	bool isFunctionCall();
+	init_t getConstantVal();
+	type_n getConstantType();
+	int getNoOfParams();
+	void setSymbolEntry();
+	void setFunctionCall(bool func_,int no);
+	void setAddress(bool add_);
+	void setConstant(bool const_);
+	void setConstant(bool const_,init_t co,type_n ty);
+	void setDeReference(bool de_);
+	void setArrayAccess(bool ar,SymbolEntry* arraySum);
 	void setTrueList(vector<int>* truelist);
 	void setFalseList(vector<int>* falselist);
 	void setNextList(vector<int>* nextlist);
 private:
 	SymbolEntry* SE;
+	SymbolEntry* arraySum;
+	bool checkAddress;
+	bool checkDeReference;
+	bool checkConstant;
+	bool checkArrayAccess;
+	bool checkFunctionCall;
+	init_t constantVal;
+	int noOfParams;
+	type_n constType;
 	vector<int>* trueList;
 	vector<int>* falseList;
 	vector<int>* nextList;
