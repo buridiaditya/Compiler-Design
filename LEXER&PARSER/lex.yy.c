@@ -375,8 +375,8 @@ static void yy_fatal_error (yyconst char msg[]  );
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
 
-#define YY_NUM_RULES 9
-#define YY_END_OF_BUFFER 10
+#define YY_NUM_RULES 11
+#define YY_END_OF_BUFFER 12
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -386,18 +386,18 @@ struct yy_trans_info
 	};
 static yyconst flex_int16_t yy_accept[134] =
     {   0,
-        0,    0,   10,    9,    1,    8,    9,    8,    8,    8,
-        9,    8,    8,    8,    8,    8,    4,    4,    8,    8,
-        8,    3,    3,    3,    8,    3,    3,    3,    3,    3,
-        3,    3,    3,    3,    3,    3,    3,    3,    8,    1,
-        8,    0,    5,    0,    0,    0,    4,    0,    6,    4,
-        0,    0,    4,    8,    8,    3,    3,    3,    3,    3,
+        0,    0,   12,   11,    1,   10,   11,   10,   10,   10,
+       11,   10,   10,   10,   10,   10,    4,    4,   10,   10,
+       10,    3,    3,    3,   10,    3,    3,    3,    3,    3,
+        3,    3,    3,    3,    3,    3,    3,    3,   10,    1,
+       10,    0,    7,    0,    0,    0,    5,    0,    8,    5,
+        0,    0,    4,   10,   10,    3,    3,    3,    3,    3,
         3,    3,    3,    2,    3,    3,    3,    3,    2,    3,
-        3,    3,    3,    3,    3,    3,    3,    3,    4,    0,
-        0,    0,    6,    0,    4,    3,    3,    3,    3,    3,
+        3,    3,    3,    3,    3,    3,    3,    3,    6,    0,
+        0,    0,    8,    0,    5,    3,    3,    3,    3,    3,
         3,    3,    3,    3,    3,    3,    3,    3,    3,    3,
 
-        3,    3,    3,    3,    0,    4,    7,    3,    3,    3,
+        3,    3,    3,    3,    0,    5,    9,    3,    3,    3,
         3,    3,    3,    3,    3,    3,    3,    3,    3,    3,
         3,    3,    3,    3,    3,    3,    3,    3,    3,    3,
         3,    3,    0
@@ -803,7 +803,7 @@ YY_DECL
 		}
 
 	{
-#line 36 "ass3_15CS30008.l"
+#line 35 "ass3_15CS30008.l"
 
 #line 809 "lex.yy.c"
 
@@ -865,53 +865,63 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 37 "ass3_15CS30008.l"
+#line 36 "ass3_15CS30008.l"
 {}
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 38 "ass3_15CS30008.l"
-{return getTokenTypeCode(yytext);}
+#line 37 "ass3_15CS30008.l"
+{yylval.strVal = new string(yytext);return getTokenTypeCode(yytext);}
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 39 "ass3_15CS30008.l"
-{return IDENTIFIER;}
+#line 38 "ass3_15CS30008.l"
+{yylval.strVal = new string(yytext);return IDENTIFIER;}
 	YY_BREAK
 case 4:
-/* rule 4 can match eol */
 YY_RULE_SETUP
-#line 40 "ass3_15CS30008.l"
-{return CONSTANT;}
+#line 39 "ass3_15CS30008.l"
+{yylval.intVal = atoi(yytext);return INTEGER_CONSTANT;}
 	YY_BREAK
 case 5:
-/* rule 5 can match eol */
 YY_RULE_SETUP
-#line 41 "ass3_15CS30008.l"
-{return STRING_LITERAL;}
+#line 40 "ass3_15CS30008.l"
+{yylval.doubleVal = atof(yytext);return FLOAT_CONSTANT;}
 	YY_BREAK
 case 6:
+/* rule 6 can match eol */
 YY_RULE_SETUP
-#line 42 "ass3_15CS30008.l"
-{}
+#line 41 "ass3_15CS30008.l"
+{yylval.charVal = yytext[0];return CHAR_CONSTANT;}
 	YY_BREAK
 case 7:
 /* rule 7 can match eol */
 YY_RULE_SETUP
-#line 43 "ass3_15CS30008.l"
-{}
+#line 42 "ass3_15CS30008.l"
+{return STRING_LITERAL;}
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 44 "ass3_15CS30008.l"
-{return getTokenTypeCode(yytext);}
+#line 43 "ass3_15CS30008.l"
+{}
 	YY_BREAK
 case 9:
+/* rule 9 can match eol */
+YY_RULE_SETUP
+#line 44 "ass3_15CS30008.l"
+{}
+	YY_BREAK
+case 10:
 YY_RULE_SETUP
 #line 45 "ass3_15CS30008.l"
+{yylval.strVal = new string(yytext);return getTokenTypeCode(yytext);}
+	YY_BREAK
+case 11:
+YY_RULE_SETUP
+#line 46 "ass3_15CS30008.l"
 ECHO;
 	YY_BREAK
-#line 915 "lex.yy.c"
+#line 925 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1912,7 +1922,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 45 "ass3_15CS30008.l"
+#line 46 "ass3_15CS30008.l"
 
 
 //{error} {printf("<ERROR> in input %s",yytext);return ERROR;}

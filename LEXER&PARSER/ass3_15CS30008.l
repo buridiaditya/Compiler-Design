@@ -42,7 +42,7 @@ punctuator  \[|\]|\(|\)|\{|\}|\.|-\>|\+\+|--|&|\*|\+|-|~|!|\/|%|\<\<|\>\>|\<|\>|
 {string_literal} {return STRING_LITERAL;}
 {single_line_comments} {}
 {multi_line_comments} {}
-{punctuator} {return getTokenTypeCode(yytext);}
+{punctuator} {yylval.strVal = new string(yytext);return getTokenTypeCode(yytext);}
 %%
 //{error} {printf("<ERROR> in input %s",yytext);return ERROR;}
 

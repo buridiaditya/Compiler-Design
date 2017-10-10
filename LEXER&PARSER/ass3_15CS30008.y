@@ -16,6 +16,7 @@
 		vector<int>* list;
 	}
 
+	%define parse.error verbose
 	%token-table
 	%nonassoc "then"
 	%nonassoc "else"
@@ -26,10 +27,10 @@
 	%token <strVal> IDENTIFIER 
 	%type <strVal> unary_operator
 	%type <decl> init_declarator declarator direct_declarator 
-	%type <exp> expression statement assignment_expression conditional_expression logical_OR_expression logical_AND_expression inclusive_OR_expression exclusive_OR_expression AND_expression equality_expression relational_expression shift_expression additive_expression multiplicative_expression cast_expression unary_expression postfix_expression primary_expression selection_statement iteration_statement initializer
+	%type <exp> expression statement assignment_expression conditional_expression logical_OR_expression logical_AND_expression inclusive_OR_expression exclusive_OR_expression AND_expression equality_expression relational_expression shift_expression additive_expression multiplicative_expression cast_expression unary_expression postfix_expression primary_expression selection_statement iteration_statement initializer block_item_list block_item expression_opt
 	%type <type> pointer type_specifier declaration_specifiers
 	%type <list> N
-	%type <intergerVal> M
+	%type <integerVal> M argument_expression_list
 	%start start
 
 	%%
@@ -58,7 +59,7 @@
 		$$ = new exp_t();
 		init_t i;
 		i.intVal = $1;
-		$$.setConstant(true,i,INT);
+		$$->setConstant(true,i,INT);
 		printf("primary_expression <<--- CONSTANT\n");
 	}
 	|CHAR_CONSTANT 
@@ -66,7 +67,7 @@
 		$$ = new exp_t();
 		init_t i;
 		i.charVal = $1;
-		$$.setConstant(true,i,CHAR);
+		$$->setConstant(true,i,CHAR);
 		printf("primary_expression <<--- CONSTANT\n");
 	}
 	|DOUBLE_CONSTANT
@@ -74,7 +75,7 @@
 		$$ = new exp_t();
 		init_t i;
 		i.doubleVal = $1;
-		$$.setConstant(true,i,DOUBLE);
+		$$->setConstant(true,i,DOUBLE);
 		printf("primary_expression <<--- CONSTANT\n");
 	}
 	|STRING_LITERAL 
@@ -99,7 +100,7 @@
 		SymbolEntry* se = $1->getSymbolEntry();
 		SymbolEntry* se1 = $3->getSymbolEntry();
 		SymbolEntry* se2;
-		type_t* ty = $1->getType();
+		type_t* ty = se->getType();
 		type_t *ty1 = new type_t(INT);
 		ty = ty->getArrayType();
 		if(ty == NULL)
@@ -108,8 +109,8 @@
 		SymbolEntry* se3 = STCurrent->gentemp(ty1);
 		QuadEntry* qe0 = new QuadEntry(OP_MUL,se3->getName(),se1->getName(),to_string(width_));	
 		QA->emit(qe0);
-		if($1->getArrayAccess()){
-			se2->getArraySum();
+		if($1->isArrayAccess()){
+			se2 = $1->getArraySum();
 			qe0 = new QuadEntry(OP_ADD,se3->getName(),se3->getName(),se2->getName());
 			QA->emit(qe0);
 		}
@@ -153,7 +154,7 @@
 	| argument_expression_list ',' assignment_expression  
 	{
 		$$ = $1 +1;
-		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se = $3->getSymbolEntry();
 		QuadEntry *qe = new QuadEntry(OP_PARAM,se->getName());
 		QA->emit(qe);
 		printf("argument_expression_list <<--- argument_expression_list , assignment_expression\n");
@@ -168,72 +169,114 @@
 	| "++" unary_expression 
 	{
 		SymbolEntry *se = $2->getSymbolEntry();
-		SymbolEntry *se1
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		if($1->isArrayAccess()){
-			se1 = STCurrent->gentemp(se->getType());
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+		type_t* t1 = se->getType();
+		type_t* ty1;
+		if($2->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$2->getArraySum()->getName());
 			QA->emit(qe);
-			qe = new QuadEntry(OP_INCR,se1->getName());
-			QA->emit(qe);			
-			$$ = $2;
-			$$->setArrayAccess(false,NULL);
 		}
-		else if($1->isConstant()){
-			type_t *ty = new type_t($2->getConstantType());
-			se1 = STCurrent->gentemp(ty);
+		else if($2->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($2->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($2->isConstant()){
+			ty1 = new type_t($2->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
 			se1->initialize($2->getConstantVal());
-			qe = new QuadEntry(OP_INCR,se1->getName());
-			QA->emit(qe);
-			$$ = $2;
-			$$->setConstant(false);
 		}
-		else{
-			qe = new QuadEntry(OP_INCR,se->getName());	
+		else if($2->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($2->getNoOfParams()));
 			QA->emit(qe);
 		}
+
+		if(ty1->getTypeName() != DOUBLE){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_INCR,se->getName(),se1->getName());
+			$$ = new exp_t(se);
+			$$->setSymbolEntry(se);
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
 		printf("unary_expression <<--- ++ unary_expression  \n");
 	}
 	| "--"  unary_expression 
 	{
 		SymbolEntry *se = $2->getSymbolEntry();
-		SymbolEntry *se1
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2;
 		QuadEntry *qe;
-		if($1->isArrayAccess()){
-			se1 = STCurrent->gentemp(se->getType());
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+		type_t* t1 = se->getType();
+		type_t* ty1;
+		if($2->isArrayAccess()){
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$2->getArraySum()->getName());
 			QA->emit(qe);
-			qe = new QuadEntry(OP_DECR,se1->getName());
-			QA->emit(qe);
-			$$ = $2;
-			$$->setArrayAccess(false,NULL);
 		}
-		else if($1->isConstant()){
-			type_t *ty = new type_t($2->getConstantType());
-			se1 = STCurrent->gentemp(ty);
+		else if($2->isDeReference()){
+			ty1 = se1->getType();
+			ty1 = ty1->getPointedType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
+			QA->emit(qe);
+		}
+		else if($2->isAddress()){
+			yyerror("Invalid variable type for multiplying.");
+		}
+		else if($2->isConstant()){
+			ty1 = new type_t($2->getConstantType());
+			se1 = STCurrent->gentemp(ty1);
 			se1->initialize($2->getConstantVal());
-			qe = new QuadEntry(OP_DECR,se1->getName());
-			QA->emit(qe);
-			$$ = $2;
-			$$->setConstant(false);
 		}
-		else{
-			qe = new QuadEntry(OP_DECR,se->getName());	
+		else if($2->isFunctionCall()){
+			se1 = ST->lookup(se->getName());
+			SymbolTable *st = se1->getNestedTable();
+			se1 = st->lookup("retVal");
+			ty1 = se1->getType();
+			se1 = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_CALL,se1->getName(),se->getName(),to_string($2->getNoOfParams()));
 			QA->emit(qe);
 		}
+
+		if(ty1->getTypeName() != DOUBLE){
+			se = STCurrent->gentemp(ty1);
+			qe = new QuadEntry(OP_DECR,se->getName(),se1->getName());
+			$$ = new exp_t(se);
+			$$->setSymbolEntry(se);
+			QA->emit(qe);
+		}
+		else
+			yyerror("Incompactible types.");
 		printf("unary_expression <<--- -- unary_expression \n");
 	}
 	| unary_operator cast_expression 
 	{
 		$$ = $2;
 		SymbolEntry* se = $2->getSymbolEntry();
-		SymbolEntry* se1;
+		SymbolEntry* se1 = se;
 		type_t* ty = se->getType();
 		QuadEntry *qe;
 		if(strcmp(*$1,"+") != 0){
 			if($2->isArrayAccess()){
 				se1 = STCurrent->gentemp(se->getType());
-				qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+				qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$2->getArraySum()->getName());
 				QA->emit(qe);
 				$$->setArrayAccess(false,NULL);
 				$$->setSymbolEntry(se1);
@@ -267,22 +310,22 @@
 
 	unary_operator : '&' 
 	{
-		$$ = $1; 
+		$$ = new string("&"); 
 		printf("unary_operator <<--- &\n");
 	}
 	| '*' 
 	{
-		$$ = $1; 
+		$$ = new string("*"); 
 		printf("unary_operator <<--- *\n");
 	}
 	| '+' 
 	{
-		$$ = $1;
+		$$ = new string("+"); 
 		printf("unary_operator <<--- +\n");
 	}
 	| '-' 
 	{
-		$$ = $1;
+		$$ = new string("-"); 
 		printf("unary_operator <<--- -\n");
 	}
 	;
@@ -303,24 +346,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -344,14 +385,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -372,10 +413,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_MUL,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_MUL,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			QA->emit(qe);
 		}
@@ -387,24 +430,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -428,14 +469,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -456,10 +497,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DIV,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_DIV,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			QA->emit(qe);
 		}
@@ -470,24 +513,22 @@
 	| multiplicative_expression '%' cast_expression {
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -511,14 +552,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -539,10 +580,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_MOD,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_MOD,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			QA->emit(qe);
 		}
@@ -561,24 +604,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -602,14 +643,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -630,10 +671,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ADD,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_ADD,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			QA->emit(qe);
 		}
@@ -645,24 +688,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -686,14 +727,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -714,10 +755,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_SUB,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_SUB,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			QA->emit(qe);
 		}
@@ -736,24 +779,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -777,14 +818,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -805,10 +846,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(ty2->getTypeName() == INT && typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_LFST,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_LSFT,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			QA->emit(qe);
 		}
@@ -820,24 +863,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -861,14 +902,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -889,10 +930,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(ty2->getTypeName() == INT && typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_RSFT,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_RSFT,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			QA->emit(qe);
 		}
@@ -911,24 +954,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -952,14 +993,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -980,10 +1021,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_LT_GOTO,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_IF_LT_GOTO,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
 			QA->emit(qe);
@@ -1000,24 +1043,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -1041,14 +1082,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -1069,10 +1110,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_GT_GOTO,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_IF_GT_GOTO,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
 			QA->emit(qe);
@@ -1089,24 +1132,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -1130,14 +1171,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -1158,10 +1199,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_LTE_GOTO,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_IF_LTE_GOTO,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
 			QA->emit(qe);
@@ -1178,24 +1221,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -1219,14 +1260,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -1247,10 +1288,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_GTE_GOTO,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_IF_GTE_GOTO,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
 			QA->emit(qe);
@@ -1274,24 +1317,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -1315,14 +1356,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -1343,10 +1384,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_EQ_GOTO,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_IF_EQ_GOTO,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
 			QA->emit(qe);
@@ -1363,24 +1406,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -1404,14 +1445,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -1432,10 +1473,12 @@
 			QA->emit(qe);
 		}
 
+		
+
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_NEQ_GOTO,se->getName(),s1->getName(),s2->getName());
-			$$ = new exp_t(se)
+			qe = new QuadEntry(OP_IF_NEQ_GOTO,se->getName(),se1->getName(),se2->getName());
+			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
 			QA->emit(qe);
@@ -1459,24 +1502,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -1500,14 +1541,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -1528,10 +1569,9 @@
 			QA->emit(qe);
 		}
 
-		
 		se = STCurrent->gentemp(ty1);
-		qe = new QuadEntry(OP_AND,se->getName(),s1->getName(),s2->getName());
-		$$ = new exp_t(se)
+		qe = new QuadEntry(OP_AND,se->getName(),se1->getName(),se2->getName());
+		$$ = new exp_t(se);
 		$$->setSymbolEntry(se);
 		QA->emit(qe);
 		
@@ -1548,24 +1588,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -1589,14 +1627,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -1617,10 +1655,9 @@
 			QA->emit(qe);
 		}
 
-		
 		se = STCurrent->gentemp(ty1);
-		qe = new QuadEntry(OP_XOR,se->getName(),s1->getName(),s2->getName());
-		$$ = new exp_t(se)
+		qe = new QuadEntry(OP_XOR,se->getName(),se1->getName(),se2->getName());
+		$$ = new exp_t(se);
 		$$->setSymbolEntry(se);
 		QA->emit(qe);
 		
@@ -1637,24 +1674,22 @@
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
 		SymbolEntry *se_ = $3->getSymbolEntry();
-		SymbolEntry *se1;
-		SymbolEntry *se2;
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_ARR_ACC,se1->getName(),se->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$1->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($1->isDeReference()){
 			ty1 = se1->getType();
 			ty1 = ty1->getPointedType();
 			se1 = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_DE_REF,se1->getName(),se->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se1->getName(),se->getName());
 			QA->emit(qe);
 		}
 		else if($1->isAddress()){
@@ -1678,14 +1713,14 @@
 		if($3->isArrayAccess()){
 			ty2 = se_->getType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_ARR_ACC,se2->getName(),se_->getName(),$2->getArraySum()->getName());
+			qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
 			QA->emit(qe);
 		}
 		else if($3->isDeReference()){
-			ty2 = se2->getType();
+			ty2 = se_->getType();
 			ty2 = ty2->getPointedType();
 			se2 = STCurrent->gentemp(ty2);
-			qe = new QuadEntry(OP_DE_REF,se2->getName(),se_->getName());
+			qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
 			QA->emit(qe);
 		}
 		else if($3->isAddress()){
@@ -1708,8 +1743,8 @@
 
 		
 		se = STCurrent->gentemp(ty1);
-		qe = new QuadEntry(OP_OR,se->getName(),s1->getName(),s2->getName());
-		$$ = new exp_t(se)
+		qe = new QuadEntry(OP_OR,se->getName(),se1->getName(),se2->getName());
+		$$ = new exp_t(se);
 		$$->setSymbolEntry(se);
 		QA->emit(qe);
 		
@@ -1747,7 +1782,11 @@
 	}
 	;
 
-	conditional_expression : logical_OR_expression {printf("conditional_expression <<--- logical_OR_expression\n");}
+	conditional_expression : logical_OR_expression 
+	{
+		$$ = $1;
+		printf("conditional_expression <<--- logical_OR_expression\n");
+	}
 	| logical_OR_expression '?' M expression ':' M conditional_expression {printf("conditional_expression <<--- logical_OR_expression ? expression : conditional_expression\n");}
 
 	assignment_expression : conditional_expression 
@@ -1757,18 +1796,139 @@
 	}
 	| unary_expression assignment_operator assignment_expression 
 	{
-		SymbolEntry* se0 = $1->getSymbolEntry();
-		SymbolEntry* se1 = $3->getSymbolEntry();
-		se0->initialize(se1->getInitialValue());
-		type_t* ty = se0->getType();
+		SymbolEntry *se = $1->getSymbolEntry();
+		SymbolEntry *se_ = $3->getSymbolEntry();
+		SymbolEntry *se1 = se;
+		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		if(ty->isArray())
-		qe = new QuadEntry();
-		else if(ty->isPointer())
+		type_t* t1 = se->getType();
+		type_t* t2 = se_->getType();
+		type_t* ty1;
+		type_t* ty2;
+		bool b1,b2;
+		if($1->isAddress()){
+			yyerror("Invalid Assignment.");	
+		}
+		else if($1->isConstant()){
+			yyerror("Invalid Assignment.");
+		}
+		else if($1->isFunctionCall()){
+			yyerror("Invalid Assignment.");
+		}
+		if($1->isArrayAccess() || $1->isDeReference())
+			b1 = true;
+		if($3->isFunctionCall() || $3->isArrayAccess() || $3->isDeReference() || $3->isAddress() || $3->isConstant())
+			b2 = true;
 
-		else
-		qe = new QuadEntry(OP_COPY,se0->getName(),se1->getName());
-		QA->emit(qe);
+		if(b1 && b2){
+			if($3->isFunctionCall()){
+				se2 = ST->lookup(se_->getName());
+				SymbolTable *st = se2->getNestedTable();
+				se2 = st->lookup("retVal");
+				ty2 = se2->getType();
+				se2 = STCurrent->gentemp(ty2);
+				qe = new QuadEntry(OP_CALL,se2->getName(),se_->getName(),to_string($3->getNoOfParams()));
+				QA->emit(qe);
+			}
+			else if($3->isArrayAccess()){
+				ty2 = se_->getType();
+				se2 = STCurrent->gentemp(ty2);
+				qe = new QuadEntry(OP_ARR_ACC_R,se2->getName(),se_->getName(),$3->getArraySum()->getName());
+				QA->emit(qe);
+			}
+			else if($3->isDeReference()){
+				ty2 = se_->getType();
+				ty2 = ty2->getPointedType();
+				se2 = STCurrent->gentemp(ty2);
+				qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se_->getName());
+				QA->emit(qe);
+			}
+			else if($3->isAddress()){
+				ty2 = new type_t(POINTER);
+				ty2->setPointedType(se_->getType());
+				se2 = STCurrent->gentemp(ty2);
+				qe = new QuadEntry(OP_REF,se2->getName(),se_->getName());
+				QA->emit(qe);
+			}
+			else if($3->isConstant()){
+				ty2 = new type_t($3->getConstantType(),false,false);
+				se2 = STCurrent->gentemp(ty2);
+				se2->initialize($3->getConstantVal());
+			}
+
+			if($1->isArrayAccess()){
+				ty1 = se->getType();
+				se1 = STCurrent->gentemp(ty1);
+				qe = new QuadEntry(OP_ARR_ACC_L,se->getName(),$1->getArraySum()->getName(),se2->getName());
+				QA->emit(qe);
+			}
+			else if($1->isDeReference()){
+				ty1 = se1->getType();
+				ty1 = ty1->getPointedType();
+				se1 = STCurrent->gentemp(ty1);
+				qe = new QuadEntry(OP_DE_REF_L,se->getName(),se2->getName());
+				QA->emit(qe);
+			}
+		}
+		else if(b1 && !b2){
+			if($1->isArrayAccess()){
+				ty1 = se->getType();
+				se1 = STCurrent->gentemp(ty1);
+				qe = new QuadEntry(OP_ARR_ACC_L,se->getName(),$1->getArraySum()->getName(),se_->getName());
+				QA->emit(qe);
+			}
+			else if($1->isDeReference()){
+				ty1 = se1->getType();
+				ty1 = ty1->getPointedType();
+				se1 = STCurrent->gentemp(ty1);
+				qe = new QuadEntry(OP_DE_REF_L,se->getName(),se_->getName());
+				QA->emit(qe);
+			}
+		}
+		else if(!b1 && b2){
+			if($3->isFunctionCall()){
+				se2 = ST->lookup(se_->getName());
+				SymbolTable *st = se2->getNestedTable();
+				se2 = st->lookup("retVal");
+				ty2 = se2->getType();
+				se2 = STCurrent->gentemp(ty2);
+				qe = new QuadEntry(OP_CALL,se->getName(),se_->getName(),to_string($3->getNoOfParams()));
+				QA->emit(qe);
+			}
+			else if($3->isArrayAccess()){
+				ty2 = se_->getType();
+				se2 = STCurrent->gentemp(ty2);
+				qe = new QuadEntry(OP_ARR_ACC_R,se->getName(),se_->getName(),$3->getArraySum()->getName());
+				QA->emit(qe);
+			}
+			else if($3->isDeReference()){
+				ty2 = se_->getType();
+				ty2 = ty2->getPointedType();
+				se2 = STCurrent->gentemp(ty2);
+				qe = new QuadEntry(OP_DE_REF_R,se->getName(),se_->getName());
+				QA->emit(qe);
+			}
+			else if($3->isAddress()){
+				ty2 = new type_t(POINTER,true,false);
+				ty2->setPointedType(se_->getType());
+				se2 = STCurrent->gentemp(ty2);
+				qe = new QuadEntry(OP_REF,se2->getName(),se_->getName());
+				QA->emit(qe);
+			}
+			else if($3->isConstant()){
+				ty2 = new type_t($3->getConstantType(),false,false);
+				se2 = STCurrent->gentemp(ty2);
+				se2->initialize($3->getConstantVal());
+			}
+		}
+		else{
+			if(typecheck(ty1,ty2)){
+				qe = new QuadEntry(OP_COPY,se->getName(),se_->getName());
+				QA->emit(qe);
+			}
+			else
+				yyerror("Incompactible types.");
+		}
 		printf("assignment_expression <<--- unary_expression assignment_operator assignment_expression \n");
 	}
 	;
@@ -1793,9 +1953,6 @@
 	constant_expression : conditional_expression {printf("constant_expression <<--- conditional_expression\n");} ;
 
 	declaration : declaration_specifiers 
-	{	
-		type_global = $1;
-	} 
 	init_declarator_list ';' {printf("declaration <<--- declaration_specifiers init_declarator_list ;\n");}
 	| declaration_specifiers ';' {printf("declaration <<--- declaration_specifiers ;\n");}
 	;
@@ -1803,11 +1960,13 @@
 	declaration_specifiers : type_specifier declaration_specifiers 
 	{
 		$$ = $1; 
+		type_global = $1;
 		printf("declaration_specifiers <<--- type_specifier declaration_specifiers\n");
 	}
 	| type_specifier 
 	{
 		$$ = $1; 
+		type_global = $1;
 		printf("declaration_specifiers <<--- type_specifier\n");
 	}
 	;
@@ -1839,7 +1998,7 @@
 		if(ty_N == POINTER){
 			if($3->isAddress()){
 				type_t * ty2 = new type_t(POINTER,true,false);
-				ty2->setPointerType(se1->getType());
+				ty2->setPointedType(se1->getType());
 				SymbolEntry *se2 = STCurrent->gentemp(ty2);
 				qe = new QuadEntry(OP_REF,se2->getName(),se1->getName());
 				QA->emit(qe);
@@ -1849,7 +2008,7 @@
 			else if($3->isDeReference()){
 				type_t * ty2 = se1->getType();
 				SymbolEntry *se2 = STCurrent->gentemp(ty2->getPointedType());
-				qe = new QuadEntry(OP_DE_REF,se2->getName(),se1->getName());
+				qe = new QuadEntry(OP_DE_REF_R,se2->getName(),se1->getName());
 				QA->emit(qe);
 				qe = new QuadEntry(OP_COPY,se->getName(),se2->getName());	
 				QA->emit(qe);
@@ -1864,11 +2023,11 @@
 		else if(ty_N == MATRIX){
 			// TODO
 		}
-		else if{
+		else{
 			if($3->isAddress())
 				yyerror("Invalid Declaration");
 			else if($3->isDeReference()){
-				qe = new QuadEntry(OP_DE_REF,se->getName(),se1->getName());
+				qe = new QuadEntry(OP_DE_REF_R,se->getName(),se1->getName());
 				QA->emit(qe);
 			}
 			else if($3->isConstant())
@@ -1952,42 +2111,49 @@
 	{
 		$$ = $1;
 		SymbolEntry *se = $3->getSymbolEntry();
-		int arraySize = se->getInitialValue();
-		$$->setArrayType($1->getType,arraySize);
+		int arraySize = (se->getInitialValue()).intVal;
+		type_t* ty = new type_t(MATRIX);
+		ty->setArrayType($1->getType(),arraySize);
+		$$->setType(ty);
 		printf("direct_declarator <<--- direct_declarator [assignment_expression]\n");
 	}
 	| direct_declarator '[' ']'   
 	{
 		$$ = $1; 
-		$$->setArrayType($1->getType,arraySize);
+		type_t* ty = new type_t(MATRIX);
+		ty->setArrayType($1->getType(),0);
+		$$->setType(ty);
 		printf("direct_declarator <<--- direct_declarator []\n");
 	}
 	| direct_declarator '('
 	{ 
-		$$ = $1;
 		STStack.push_back(STCurrent);
-		STCurrent = new SymbolTable();
+		STCurrent = new SymbolTable();	
+	} 
+	parameter_type_list ')' 
+	{
+		$$ = $1;
 		$$->setType(FUNCTION);
 		$$->setNestedTable(STCurrent); 
 		string* temp_string = new string("retVal");
 		SymbolEntry* se = STCurrent->gentemp(type_global,temp_string);
-	} 
-	parameter_type_list ')' { printf("direct_declarator <<--- direct_declarator (parameter_type_list)\n");}
+		printf("direct_declarator <<--- direct_declarator (parameter_type_list)\n");
+	}
 	| direct_declarator '(' 
 	{
-		$$ = $1;
 		STStack.push_back(STCurrent);
-		$$->setType(FUNCTION);
 	}
 	identifier_list ')' 
 	{
+		$$ = $1;
+		$$->setType(FUNCTION);
 		STCurrent = new SymbolTable();
 		$$->setNestedTable(STCurrent); 
 		string* temp_string = new string("retVal");
 		SymbolEntry* se = STCurrent->gentemp(type_global,temp_string);		
 		printf("direct_declarator <<--- direct_declarator (identifier_list)\n");
 	}
-	| direct_declarator '(' 
+	| direct_declarator '(' ')' 
 	{
 		$$ = $1;
 		STStack.push_back(STCurrent);
@@ -1996,12 +2162,12 @@
 		$$->setNestedTable(STCurrent); 
 		string* temp_string = new string("retVal");
 		SymbolEntry* se = STCurrent->gentemp(type_global,temp_string);
-	} 
-	')' {printf("direct_declarator <<--- direct_declarator ()\n");}
+		printf("direct_declarator <<--- direct_declarator ()\n");
+	}
 	;
 	pointer : '*'  
 	{
-		$$ = new type_t(POINTER,true,false)
+		$$ = new type_t(POINTER,true,false);
 		$$->setPointedType(type_global);
 		printf("pointer <<--- *\n");
 	}
@@ -2019,13 +2185,9 @@
 	| parameter_list ',' parameter_declaration {printf("parameter_list <<--- parameter_list ',' parameter_declaration\n");}
 	;
 
-	parameter_declaration : declaration_specifiers 
+	parameter_declaration : declaration_specifiers declarator 
 	{
-		type_global = $1.getType(); 
-	} 
-	declarator 
-	{
-		STCurrent->gentemp($3); 
+		STCurrent->gentemp($2); 
 		printf("parameter_declaration <<--- declaration_specifiers declarator\n");
 	}
 	| declaration_specifiers 
@@ -2037,14 +2199,14 @@
 
 	identifier_list : IDENTIFIER  
 	{
-		SymbolTable *st = STStack->back();
+		SymbolTable *st = STStack.back();
 		SymbolEntry *se = st->lookup($1);
 		STCurrent->gentemp(se);
 		printf("identifier_list <<--- IDENTIFIER \n");
 	}
 	| identifier_list ',' IDENTIFIER  
 	{
-		SymbolTable *st = STStack->back();
+		SymbolTable *st = STStack.back();
 		SymbolEntry *se = st->lookup($3);
 		STCurrent->gentemp(se);	
 		printf("identifier_list <<--- identifier_list , IDENTIFIER \n");
@@ -2144,14 +2306,14 @@
 	selection_statement : "if" '(' expression ')' M statement %prec "then" 
 	{
 		backpatch($3->getTrueList(),$5);
-		$$->setNextList(merge($3->getFalseList(),$6->nextList());	
+		$$->setNextList(merge($3->getFalseList(),$6->getNextList()));	
 		printf("selection_statement <<--- if (expression) statement\n");
 	}
 	| "if" '(' expression ')' M statement N "else" M statement 
 	{
 		backpatch($3->getTrueList(),$5);
 		backpatch($3->getFalseList(),$9);
-		vector<int>* temp = merge($6->getNextList(),$7->getNextList());
+		vector<int>* temp = merge($6->getNextList(),$7);
 		$$->setNextList(merge(temp,$10->getNextList()));
 		printf("selection_statement <<--- if (expression) statement else statement\n");
 	}
@@ -2196,7 +2358,7 @@
 	{
 		QuadEntry *qe;
 		if( $2 == NULL )
-			qe = new QuadEntry(OP_RETURN);
+			qe = new QuadEntry(OP_RETURN,"");
 		else{
 			string *name = new string("retVal");
 			SymbolEntry *se = STCurrent->lookup(name);
@@ -2220,26 +2382,17 @@
 	}
 	;
 
-	function_definition : declaration_specifiers 
-	{	
-		type_global = $1;
-	} 
-	declarator declaration_list compound_statement 
+	function_definition : declaration_specifiers declarator declaration_list compound_statement 
 	{
-		SymbolEntry *se = STStack.back()->gentemp($3);
+		SymbolEntry *se = STStack.back()->gentemp($2);
 		se->setNestedTable(STCurrent);
 		STCurrent = STStack.back();
 		STStack.pop_back();
 		printf("function_definition <<--- declaration_specifiers declarator declaration_list compound_statement\n");
 	}
-	| declaration_specifiers 
-	{	
-		type_global = $1.getType();
-	} 
-	declarator 
-	compound_statement 
+	| declaration_specifiers declarator compound_statement 
 	{
-		SymbolEntry *se = STStack.back()->gentemp($3);
+		SymbolEntry *se = STStack.back()->gentemp($2);
 		se->setNestedTable(STCurrent);
 		STCurrent = STStack.back();
 		STStack.pop_back();

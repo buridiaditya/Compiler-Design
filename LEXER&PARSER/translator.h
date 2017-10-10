@@ -1,5 +1,8 @@
-#include <string>
+#include <string.h>
 #include <vector>
+#include <stdlib.h>
+#include <stdio.h>
+#include <iostream>
 
 using namespace std;
 
@@ -13,7 +16,7 @@ class SymbolTable;
 class SymbolEntry;
 class type_t;
 class decl_t;
-class expt_t;
+class exp_t;
 
 typedef enum{
 	INT = 0,
@@ -27,7 +30,7 @@ typedef enum{
 
 typedef enum {
 	OP_ADD,
-	op_NEG,
+	OP_NEG,
 	OP_SUB,
 	OP_LSFT,
 	OP_RSFT,
@@ -44,7 +47,9 @@ typedef enum {
 	OP_XOR,
 	OP_OR,
 	OP_COPY,
-	OP_DE_REF,
+	OP_DE_REF_L,
+	OP_DE_REF_R,
+	OP_REF,
 	OP_IF_LT_GOTO,
 	OP_IF_GT_GOTO,
 	OP_IF_LTE_GOTO,
@@ -53,7 +58,8 @@ typedef enum {
 	OP_IF_NEQ_GOTO,
 	OP_IF_GOTO,
 	OP_IFF_GOTO,
-	OP_ARR_ACC,
+	OP_ARR_ACC_R,
+	OP_ARR_ACC_L,
 	OP_INCR,
 	OP_DECR,
 	OP_GOTO,
@@ -62,17 +68,18 @@ typedef enum {
 	OP_RETURN
 }OPCode;
 
-union init_t{
+typedef struct init_t{
 	int intVal;
 	string* strVal;
 	char charVal;
 	vector<vector<double> > matVal;
 	double doubleVal;
-};
+}init_t;
 
 class type_t{
 public:
 	type_t();
+	type_t(type_n type);
 	type_t(type_n type_,bool isPointer_,bool isArray_);
 	void setType(type_n type);
 	void setPointedType(type_t* type_);
@@ -126,6 +133,7 @@ private:
 class SymbolTable{
 public:
 	SymbolTable();	
+	SymbolEntry* lookup(string name);
 	SymbolEntry* lookup(string* name);
 	SymbolEntry* gentemp(type_t* type);
 	SymbolEntry* gentemp(decl_t* dec);
@@ -163,10 +171,10 @@ private:
 	SymbolTable* nestedTable;
 };
 
-class expt_t{
+class exp_t{
 public:
-	expt_t();
-	expt_t(SymbolEntry* SE_);
+	exp_t();
+	exp_t(SymbolEntry* SE_);
 	SymbolEntry* getSymbolEntry();
 	vector<int>* getTrueList();
 	vector<int>* getFalseList();
@@ -180,7 +188,7 @@ public:
 	init_t getConstantVal();
 	type_n getConstantType();
 	int getNoOfParams();
-	void setSymbolEntry();
+	void setSymbolEntry(SymbolEntry* se);
 	void setFunctionCall(bool func_,int no);
 	void setAddress(bool add_);
 	void setConstant(bool const_);
@@ -212,6 +220,11 @@ public:
 	QuadEntry(OPCode op,string result,string argv1, string argv2);
 	QuadEntry(OPCode op,string result,string argv1);
 	QuadEntry(OPCode op,string result);
+	QuadEntry(OPCode op,string* result,string* argv1, string* argv2);
+	QuadEntry(OPCode op,string* result,string* argv1);
+	QuadEntry(OPCode op,string* result);
+	QuadEntry(OPCode op,string* result,string* argv1, string argv2);
+	QuadEntry(OPCode op,string* result,string argv1, string* argv2);
 	void setArgv1(string argv);
 	void setArgv2(string argv);
 	void setResult(string result_);
