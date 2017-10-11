@@ -1,9 +1,9 @@
 %{
 #define YYPRINT
+#include "translator.h"
 #include "ass3_15CS30008.tab.h"
 #include "ass3_15CS30008.tab.c"
 #define ERROR -1;
-#include <string.h>
 int getTokenTypeCode(char*);
 %}
 
@@ -36,8 +36,8 @@ punctuator  \[|\]|\(|\)|\{|\}|\.|-\>|\+\+|--|&|\*|\+|-|~|!|\/|%|\<\<|\>\>|\<|\>|
 {ws} {}
 {keyword} {yylval.strVal = new string(yytext);return getTokenTypeCode(yytext);}
 {identifier} {yylval.strVal = new string(yytext);return IDENTIFIER;}
-{integer_constant}|{zero_constant} {yylval.intVal = atoi(yytext);return INTEGER_CONSTANT;}
-{floating_constant} {yylval.doubleVal = atof(yytext);return FLOAT_CONSTANT;}
+{integer_constant}|{zero_constant} {yylval.integerVal = atoi(yytext);return INT_CONSTANT;}
+{floating_constant} {yylval.doubleVal = atof(yytext);return DOUBLE_CONSTANT;}
 {character_constant} {yylval.charVal = yytext[0];return CHAR_CONSTANT;}
 {string_literal} {return STRING_LITERAL;}
 {single_line_comments} {}

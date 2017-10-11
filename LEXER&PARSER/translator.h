@@ -1,4 +1,4 @@
-#include <string.h>
+#include <string>
 #include <vector>
 #include <stdlib.h>
 #include <stdio.h>
@@ -91,8 +91,6 @@ private:
 	bool arrayCheck;
 	int noOfElements;
 };
-
-type_t *type_global = new type_t();
 
 class SymbolEntry{
 public:
@@ -250,7 +248,8 @@ bool typecheck(type_t* type1, type_t* type2);
 int getWidth(type_n type);
 int getWidth(type_t* type);
 
-SymbolTable *ST = new SymbolTable();
-vector<SymbolTable*> STStack;
-SymbolTable *STCurrent = ST;
-QuadArray *QA = new QuadArray();
+extern type_t *type_global;
+extern SymbolTable *ST;
+extern vector<SymbolTable*> STStack;
+extern SymbolTable *STCurrent;
+extern QuadArray *QA;

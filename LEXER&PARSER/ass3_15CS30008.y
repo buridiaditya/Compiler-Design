@@ -1,5 +1,4 @@
 %{
-	#include "translator.h"
 	int yylex();
 	void yyerror(const char*);
 	%}
@@ -34,7 +33,13 @@
 
 	%%
 
-	start : translation_unit {exit(-1);}
+	start : translation_unit 
+	{
+		STCurrent->print();
+		QA->print();
+		cout << "Parse Done" << endl;
+		exit(-1);
+	}
 	M: 
 	{
 		$$ = QA->getSize();
@@ -98,6 +103,11 @@
 		$$ = $1;
 		SymbolEntry* se = $1->getSymbolEntry();
 		SymbolEntry* se1 = $3->getSymbolEntry();
+		if($3->isConstant()){
+			type_t * ty = new type_t($3->getConstantType());
+			se1 = STCurrent->gentemp(ty);
+			se1->initialize($3->getConstantVal());
+		}
 		SymbolEntry* se2;
 		type_t* ty = se->getType();
 		type_t *ty1 = new type_t(INT);
@@ -350,6 +360,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+			
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -434,6 +449,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -517,6 +537,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -608,6 +633,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -692,6 +722,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -783,6 +818,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -867,6 +907,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -958,6 +1003,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -1047,6 +1097,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -1136,6 +1191,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -1225,6 +1285,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -1321,6 +1386,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -1383,8 +1453,6 @@
 			QA->emit(qe);
 		}
 
-		
-
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
 			qe = new QuadEntry(OP_IF_EQ_GOTO,se->getName(),se1->getName(),se2->getName());
@@ -1410,6 +1478,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -1506,6 +1579,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -1592,6 +1670,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -1678,6 +1761,11 @@
 		QuadEntry *qe;
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		if($1->isArrayAccess()){
 			ty1 = se->getType();
 			se1 = STCurrent->gentemp(ty1);
@@ -1800,10 +1888,13 @@
 		SymbolEntry *se1 = se;
 		SymbolEntry *se2 = se_;
 		QuadEntry *qe;
-		type_t* t1 = se->getType();
-		type_t* t2 = se_->getType();
 		type_t* ty1;
 		type_t* ty2;
+		if(se != NULL)
+			ty1 = se->getType();
+		if(se_ != NULL)
+			ty2 = se_->getType();
+		
 		bool b1,b2;
 		if($1->isAddress()){
 			yyerror("Invalid Assignment.");	
@@ -1856,30 +1947,20 @@
 			}
 
 			if($1->isArrayAccess()){
-				ty1 = se->getType();
-				se1 = STCurrent->gentemp(ty1);
 				qe = new QuadEntry(OP_ARR_ACC_L,se->getName(),$1->getArraySum()->getName(),se2->getName());
 				QA->emit(qe);
 			}
 			else if($1->isDeReference()){
-				ty1 = se1->getType();
-				ty1 = ty1->getPointedType();
-				se1 = STCurrent->gentemp(ty1);
 				qe = new QuadEntry(OP_DE_REF_L,se->getName(),se2->getName());
 				QA->emit(qe);
 			}
 		}
 		else if(b1 && !b2){
 			if($1->isArrayAccess()){
-				ty1 = se->getType();
-				se1 = STCurrent->gentemp(ty1);
 				qe = new QuadEntry(OP_ARR_ACC_L,se->getName(),$1->getArraySum()->getName(),se_->getName());
 				QA->emit(qe);
 			}
 			else if($1->isDeReference()){
-				ty1 = se1->getType();
-				ty1 = ty1->getPointedType();
-				se1 = STCurrent->gentemp(ty1);
 				qe = new QuadEntry(OP_DE_REF_L,se->getName(),se_->getName());
 				QA->emit(qe);
 			}
@@ -1895,28 +1976,19 @@
 				QA->emit(qe);
 			}
 			else if($3->isArrayAccess()){
-				ty2 = se_->getType();
-				se2 = STCurrent->gentemp(ty2);
 				qe = new QuadEntry(OP_ARR_ACC_R,se->getName(),se_->getName(),$3->getArraySum()->getName());
 				QA->emit(qe);
 			}
 			else if($3->isDeReference()){
-				ty2 = se_->getType();
-				ty2 = ty2->getPointedType();
-				se2 = STCurrent->gentemp(ty2);
 				qe = new QuadEntry(OP_DE_REF_R,se->getName(),se_->getName());
 				QA->emit(qe);
 			}
 			else if($3->isAddress()){
-				ty2 = new type_t(POINTER,true,false);
-				ty2->setPointedType(se_->getType());
-				se2 = STCurrent->gentemp(ty2);
-				qe = new QuadEntry(OP_REF,se2->getName(),se_->getName());
+				qe = new QuadEntry(OP_REF,se->getName(),se_->getName());
 				QA->emit(qe);
 			}
 			else if($3->isConstant()){
-				ty2 = new type_t($3->getConstantType(),false,false);
-				se2 = STCurrent->gentemp(ty2);
+				se2 = STCurrent->lookup(se->getName());
 				se2->initialize($3->getConstantVal());
 			}
 		}
@@ -1945,14 +2017,21 @@
 	| "|=" {printf("assignment_operator <<--- |=\n");}
 	;
 
-	expression : assignment_expression {printf("expression <<--- assignment_expression\n");}
-	| expression ',' assignment_expression {printf("expression <<--- expression , assignment_expression\n");}
+	expression : assignment_expression 
+	{
+		$$ = $1;
+		printf("expression <<--- assignment_expression\n");
+	}
+	| expression ',' assignment_expression 
+	{
+		$$ = $3;
+		printf("expression <<--- expression , assignment_expression\n");
+	}
 	;
 
 	constant_expression : conditional_expression {printf("constant_expression <<--- conditional_expression\n");} ;
 
-	declaration : declaration_specifiers 
-	init_declarator_list ';' {printf("declaration <<--- declaration_specifiers init_declarator_list ;\n");}
+	declaration : declaration_specifiers init_declarator_list ';' {printf("declaration <<--- declaration_specifiers init_declarator_list ;\n");}
 	| declaration_specifiers ';' {printf("declaration <<--- declaration_specifiers ;\n");}
 	;
 
@@ -2013,7 +2092,7 @@
 				QA->emit(qe);
 			}
 			else if($3->isConstant())
-			yyerror("Invalid Declaration");
+				yyerror("Invalid Declaration");
 			else{
 				qe = new QuadEntry(OP_COPY,se->getName(),se1->getName());	
 				QA->emit(qe);
@@ -2024,7 +2103,7 @@
 		}
 		else{
 			if($3->isAddress())
-				yyerror("Invalid Declaration");
+				yyerror("Cannot Initialize with Address");
 			else if($3->isDeReference()){
 				qe = new QuadEntry(OP_DE_REF_R,se->getName(),se1->getName());
 				QA->emit(qe);
@@ -2109,8 +2188,14 @@
 	| direct_declarator '[' assignment_expression ']' 
 	{
 		$$ = $1;
-		SymbolEntry *se = $3->getSymbolEntry();
-		int arraySize = (se->getInitialValue()).intVal;
+		int arraySize;
+		if($3->isConstant()){
+			arraySize = ($3->getConstantVal()).intVal;
+		}
+		else{
+			SymbolEntry *se = $3->getSymbolEntry();
+			arraySize = (se->getInitialValue()).intVal;
+		}
 		type_t* ty = new type_t(MATRIX);
 		ty->setArrayType($1->getType(),arraySize);
 		$$->setType(ty);
@@ -2132,7 +2217,8 @@
 	parameter_type_list ')' 
 	{
 		$$ = $1;
-		$$->setType(FUNCTION);
+		type_t* ty = new type_t(FUNCTION);
+		$$->setType(ty);
 		$$->setNestedTable(STCurrent); 
 		string* temp_string = new string("retVal");
 		SymbolEntry* se = STCurrent->gentemp(type_global,temp_string);
@@ -2145,7 +2231,8 @@
 	identifier_list ')' 
 	{
 		$$ = $1;
-		$$->setType(FUNCTION);
+		type_t* ty = new type_t(FUNCTION);
+		$$->setType(ty);
 		STCurrent = new SymbolTable();
 		$$->setNestedTable(STCurrent); 
 		string* temp_string = new string("retVal");
@@ -2157,7 +2244,8 @@
 		$$ = $1;
 		STStack.push_back(STCurrent);
 		STCurrent = new SymbolTable();
-		$$->setType(FUNCTION);
+		type_t* ty = new type_t(FUNCTION);
+		$$->setType(ty);
 		$$->setNestedTable(STCurrent); 
 		string* temp_string = new string("retVal");
 		SymbolEntry* se = STCurrent->gentemp(type_global,temp_string);
@@ -2369,21 +2457,26 @@
 	}
 	;
 
-	translation_unit : external_declaration {printf("translation_unit <<--- external_declaration\n");}
-	| translation_unit external_declaration {printf("translation_unit <<--- translation_unit external_declaration\n");}
+	translation_unit : external_declaration 
+	{
+		printf("translation_unit <<--- external_declaration\n");
+	}
+	| translation_unit external_declaration 
+	{		
+		printf("translation_unit <<--- translation_unit external_declaration\n");
+	}
 	;
 
 	external_declaration : function_definition  {printf("external_declaration <<--- function_definition\n");}
 	| declaration 
 	{
-
-		printf("external_declaration <<--- definition\n");
+		printf("external_declaration <<--- declaration\n");
 	}
 	;
 
 	function_definition : declaration_specifiers declarator declaration_list compound_statement 
 	{
-		SymbolEntry *se = STStack.back()->gentemp($2);
+		SymbolEntry *se = (STStack.back())->gentemp($2);
 		se->setNestedTable(STCurrent);
 		STCurrent = STStack.back();
 		STStack.pop_back();
@@ -2391,7 +2484,7 @@
 	}
 	| declaration_specifiers declarator compound_statement 
 	{
-		SymbolEntry *se = STStack.back()->gentemp($2);
+		SymbolEntry *se = (STStack.back())->gentemp($2);
 		se->setNestedTable(STCurrent);
 		STCurrent = STStack.back();
 		STStack.pop_back();

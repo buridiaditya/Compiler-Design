@@ -1,6 +1,13 @@
 #include "translator.h"
 
+type_t *type_global = new type_t();
+SymbolTable *ST = new SymbolTable();
+vector<SymbolTable*> STStack;
+SymbolTable *STCurrent = ST;
+QuadArray *QA = new QuadArray();
+
 //////////// TYPE_T CLASS /////////////////////
+type_t::type_t(){}
 type_t::type_t(type_n type_){
 	type_name = type_;
 	if(type_ == POINTER)
@@ -121,6 +128,11 @@ exp_t::exp_t(){
 	trueList = NULL;
 	falseList = NULL;
 	nextList = NULL;
+	checkAddress = false;
+	checkDeReference = false;
+	checkConstant = false;
+	checkArrayAccess = false;
+	checkFunctionCall = false;
 	SE = NULL;
 }
 
@@ -128,6 +140,11 @@ exp_t::exp_t(SymbolEntry* SE_){
 	trueList = NULL;
 	falseList = NULL;
 	nextList = NULL;
+	checkAddress = false;
+	checkDeReference = false;
+	checkConstant = false;
+	checkArrayAccess = false;
+	checkFunctionCall = false;
 	SE = SE_;
 }
 
@@ -197,11 +214,11 @@ void exp_t::setAddress(bool add_){
 }
 
 void exp_t::setConstant(bool const_){
-	checkAddress = const_;
+	checkConstant = const_;
 }
 
 void exp_t::setConstant(bool const_,init_t co,type_n ty){
-	checkAddress = const_;
+	checkConstant = const_;
 	constantVal = co;
 	constType = ty;
 }
@@ -309,8 +326,38 @@ SymbolTable* SymbolEntry::getNestedTable(){
 	return nestedTable;
 }
 
-void print(){
-
+void SymbolEntry::print(){
+	string a;
+	string b = "";
+	switch(type->getTypeName()){
+		case INT:
+			a = "INT";
+			b = to_string(initialValue.intVal);
+			break;
+		case CHAR:
+			a = "CHAR";
+			b = to_string(initialValue.charVal);
+			break;
+		case VOID:
+			a = "VOID";
+			break;
+		case DOUBLE:
+			a = "DOUBLE";
+			b = to_string(initialValue.doubleVal);
+			break;
+		case MATRIX:
+			a = "MATRIX";
+			break;
+		case POINTER:
+			a = "POINTER";
+			break;
+		case FUNCTION:
+			a = "FUNCTION";
+			break;
+	}
+	cout << "NAME : " << *name << "        TYPE : " << a << "        INITIAL VALUE : " << b << "        SIZE : " << size << "        OFFSET : " << offset << endl;
+	if(type->getTypeName() == FUNCTION)
+		nestedTable->print();
 }
 
 ///////////////// SYMBOL TABLE ////////////////////
@@ -387,6 +434,12 @@ void SymbolTable::setOffset(int offset_){
 void SymbolTable::update(string* name,init_t initValue){
 	SymbolEntry* se = lookup(name);
 	se->initialize(initValue);
+}
+
+void SymbolTable::print(){	
+	for(int i = 0; i < entries.size(); i++){
+		cout << i << " : ";entries[i]->print();
+	}
 }
 
 //////////////// QUAD ENTRY //////////////////////
@@ -494,7 +547,7 @@ void QuadEntry::print(){
 			cout << result + " = " + argv1 + " / " + argv2 << endl;
 			break;
 		case OP_MOD:	
-			cout << result + " = " + argv1 + " % " + argv2 << endl;
+			cout << result + " = " + argv1 + " %% " + argv2 << endl;
 			break;
 		case OP_AND:
 			cout << result + " = " + argv1 + " & " + argv2 << endl;
@@ -569,6 +622,7 @@ void QuadEntry::print(){
 }
 
 ////////////////// QUAD ARRAY //////////////////
+QuadArray::QuadArray(){}
 void QuadArray::emit(QuadEntry* qd){
 	entries.push_back(qd);
 }
@@ -635,6 +689,15 @@ int getWidth(type_n type){
 
 int getWidth(type_t* type){
 	type_n type_ = type->getTypeName();
+	int size = 1;
+	if(type_ == MATRIX){
+		while(type->getArrayType() != NULL){
+			size *= type->getNoOfElements();
+			type = type->getArrayType();
+		}  
+		size *= SIZE_OF_DOUBLE;
+		return size;
+	}
 	return getWidth(type_);
 }
 
