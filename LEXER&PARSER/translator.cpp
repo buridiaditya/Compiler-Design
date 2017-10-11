@@ -1,15 +1,13 @@
 #include "translator.h"
 
 //////////// TYPE_T CLASS /////////////////////
-type_t::type()
-
 type_t::type_t(type_n type_){
 	type_name = type_;
-	if(type == POINTER)
+	if(type_ == POINTER)
 		pointerCheck = true;
 	else 
 		pointerCheck = false;
-	if(type == MATRIX)
+	if(type_ == MATRIX)
 		arrayCheck = true;
 	else
 		arrayCheck = false;
@@ -473,7 +471,101 @@ void QuadEntry::setResult(string result_){
 }
 
 void QuadEntry::print(){
-
+	switch(op){
+		case OP_ADD:
+			cout << result + " = " + argv1 + " + " + argv2 << endl;
+			break;
+		case OP_NEG:
+			cout << result + " = -" + argv1 << endl;
+			break;
+		case OP_SUB:
+			cout << result + " = " + argv1 + " - " + argv2 << endl;
+			break;
+		case OP_LSFT:
+			cout << result + " = " + argv1 + " << " + argv2 << endl;
+			break;
+		case OP_RSFT:
+			cout << result + " = " + argv1 + " >> " + argv2 << endl;
+			break;
+		case OP_MUL:
+			cout << result + " = " + argv1 + " * " + argv2 << endl;
+			break;
+		case OP_DIV:
+			cout << result + " = " + argv1 + " / " + argv2 << endl;
+			break;
+		case OP_MOD:	
+			cout << result + " = " + argv1 + " % " + argv2 << endl;
+			break;
+		case OP_AND:
+			cout << result + " = " + argv1 + " & " + argv2 << endl;
+			break;
+		case OP_XOR:
+			cout << result + " = " + argv1 + " ^ " + argv2 << endl;
+			break;
+		case OP_OR:
+			cout << result + " = " + argv1 + " | " + argv2 << endl;
+			break;
+		case OP_COPY:
+			cout << result + " = " + argv1 << endl;
+			break;
+		case OP_DE_REF_L:
+			cout << "*" + result + " = " + argv1 << endl;
+			break;
+		case OP_DE_REF_R:
+			cout << result + " = *" + argv1 << endl;
+			break;
+		case OP_REF:
+			cout << result + " = &" + argv1 << endl;
+			break;
+		case OP_IF_LT_GOTO:
+			cout << "if " + argv1 + " < " + argv2 + " then goto " + result << endl;
+			break;
+		case OP_IF_GT_GOTO:
+			cout << "if " + argv1 + " > " + argv2 + " then goto " + result << endl;
+			break;
+		case OP_IF_LTE_GOTO:
+			cout << "if " + argv1 + " <= " + argv2 + " then goto " + result << endl;
+			break;
+		case OP_IF_GTE_GOTO:
+			cout << "if " + argv1 + " >= " + argv2 + " then goto " + result << endl;
+			break;
+		case OP_IF_EQ_GOTO:
+			cout << "if " + argv1 + " == " + argv2 + " then goto " + result << endl;
+			break;
+		case OP_IF_NEQ_GOTO:
+			cout << "if " + argv1 + " != " + argv2 + " then goto " + result << endl;
+			break;
+		case OP_IF_GOTO:
+			cout << "if " + argv1 + " then goto " + result << endl;
+			break;
+		case OP_IFF_GOTO:
+			cout << "if not " + argv1 + " then goto " + result << endl;
+			break;
+		case OP_ARR_ACC_R:
+			cout << result + " = " + argv1 + "[" + argv2 + "]" << endl;
+			break;
+		case OP_ARR_ACC_L: 
+			cout << result + "[" + argv1 + "]" " = " + argv2 << endl;
+			break;
+		case OP_INCR:
+			cout << result + " = ++" + argv1 << endl;
+			break;
+		case OP_DECR:
+			cout << result + " = --" + argv1 << endl;
+			break;
+		case OP_GOTO:
+			cout << "goto " + result << endl;
+			break;
+		case OP_PARAM:
+			cout << "param " + result << endl;
+			break;
+		case OP_CALL:
+			cout << result + " = call " + argv1 + " , " + argv2 << endl;
+			break;
+		case OP_RETURN:
+			cout << "return " + result << endl;
+			break;
+	}
 }
 
 ////////////////// QUAD ARRAY //////////////////
@@ -490,13 +582,16 @@ QuadEntry* QuadArray::getEntry(int index){
 }
 
 void QuadArray::print(){
-
+	for(int i = 0; i < entries.size(); i++){
+		cout << entries.size() << " : ";entries[i]->print();
+	}
 }
 
 ////////////// BACKPATCHING //////////////	
 vector<int>* makelist(int instr){
 	vector<int>* list = new vector<int>();
 	list->push_back(instr); 
+	return list;
 }
 
 vector<int>* merge(vector<int>* list1,vector<int>* list2){
@@ -518,6 +613,7 @@ vector<int>* backpatch(vector<int>* list, int instr){
 }
 
 int getWidth(type_n type){
+	int size;
 	switch(type){
 		case INT:
 			return SIZE_OF_INT;
@@ -529,6 +625,11 @@ int getWidth(type_n type){
 			return SIZE_OF_DOUBLE;
 		case VOID:
 			return SIZE_OF_VOID;
+		case FUNCTION:
+			return 0;
+		case MATRIX:
+			// TODO
+			return size;
 	}
 }
 
@@ -538,5 +639,5 @@ int getWidth(type_t* type){
 }
 
 bool typecheck(type_t* type1, type_t* type2){
-	
+	return true;
 }

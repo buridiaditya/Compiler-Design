@@ -37,12 +37,6 @@ typedef enum {
 	OP_MUL,
 	OP_DIV,
 	OP_MOD,
-	OP_LT,
-	OP_GT,
-	OP_LTE,
-	OP_GTE,
-	OP_EQ,
-	OP_NEQ,
 	OP_AND,
 	OP_XOR,
 	OP_OR,
@@ -72,7 +66,6 @@ typedef struct init_t{
 	int intVal;
 	string* strVal;
 	char charVal;
-	vector<vector<double> > matVal;
 	double doubleVal;
 }init_t;
 

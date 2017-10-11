@@ -9,14 +9,13 @@
 		char charVal;
 		double doubleVal;
 		string* strVal;
-		vector<vector<double> > matVal; 
 		decl_t* decl; 
 		exp_t* exp;
 		type_t* type;
 		vector<int>* list;
 	}
 
-	%define parse.error verbose
+	
 	%token-table
 	%nonassoc "then"
 	%nonassoc "else"
@@ -273,7 +272,7 @@
 		SymbolEntry* se1 = se;
 		type_t* ty = se->getType();
 		QuadEntry *qe;
-		if(strcmp(*$1,"+") != 0){
+		if((*$1).compare("+") != 0){
 			if($2->isArrayAccess()){
 				se1 = STCurrent->gentemp(se->getType());
 				qe = new QuadEntry(OP_ARR_ACC_R,se1->getName(),se->getName(),$2->getArraySum()->getName());
@@ -288,17 +287,17 @@
 				$$->setConstant(false);
 				$$->setSymbolEntry(se1);
 			}
-			if(strcmp(*$1,"&") == 0){
+			if((*$1).compare("&") == 0){
 				if($2->isConstant())
 					yyerror("Invalid reference");
 				$$->setAddress(true);
 			}
-			else if(strcmp(*$1,"*") == 0 && ty->getTypeName() == POINTER){
+			else if((*$1).compare("*") == 0 && ty->getTypeName() == POINTER){
 				if($2->isConstant())
 					yyerror("Invalid reference");
 				$$->setDeReference(true);
 			}
-			else if(strcmp(*$1,"-") == 0){
+			else if((*$1).compare("-") == 0){
 				qe = new QuadEntry(OP_NEG,se1->getName(),se1->getName());
 				QA->emit(qe);
 				$$->setSymbolEntry(se1);				
