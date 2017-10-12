@@ -1,0 +1,77 @@
+Symbol Table
+0 : NAME : a        TYPE : INT        INITIAL VALUE : 10        SIZE : 4        OFFSET : 0
+1 : NAME : b        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 4
+2 : NAME : c        TYPE : MATRIX        INITIAL VALUE :         SIZE : 1600        OFFSET : 8
+3 : NAME : func        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 1608
+0 : NAME : a        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 0
+1 : NAME : b        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 4
+2 : NAME : retVal        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 8
+3 : NAME : temp0        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 12
+4 : NAME : main        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 1608
+0 : NAME : retVal        TYPE : VOID        INITIAL VALUE :         SIZE : 0        OFFSET : 0
+1 : NAME : a        TYPE : INT        INITIAL VALUE : 10        SIZE : 4        OFFSET : 0
+2 : NAME : b        TYPE : INT        INITIAL VALUE : 10        SIZE : 4        OFFSET : 4
+3 : NAME : temp0        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 8
+4 : NAME : c        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 12
+5 : NAME : d        TYPE : POINTER        INITIAL VALUE :         SIZE : 4        OFFSET : 16
+6 : NAME : temp1        TYPE : POINTER        INITIAL VALUE :         SIZE : 4        OFFSET : 20
+7 : NAME : e        TYPE : MATRIX        INITIAL VALUE :         SIZE : 1600        OFFSET : 24
+8 : NAME : f        TYPE : MATRIX        INITIAL VALUE :         SIZE : 1600        OFFSET : 1624
+9 : NAME : temp2        TYPE : INT        INITIAL VALUE : 4        SIZE : 4        OFFSET : 3224
+10 : NAME : temp3        TYPE : INT        INITIAL VALUE : 5        SIZE : 4        OFFSET : 3228
+11 : NAME : temp4        TYPE : INT        INITIAL VALUE : 3        SIZE : 4        OFFSET : 3232
+12 : NAME : temp5        TYPE : INT        INITIAL VALUE : 2        SIZE : 4        OFFSET : 3236
+13 : NAME : temp6        TYPE : INT        INITIAL VALUE : 5        SIZE : 4        OFFSET : 3240
+14 : NAME : temp7        TYPE : INT        INITIAL VALUE : 6        SIZE : 4        OFFSET : 3244
+15 : NAME : temp8        TYPE : MATRIX        INITIAL VALUE :         SIZE : 8        OFFSET : 3248
+16 : NAME : temp9        TYPE : MATRIX        INITIAL VALUE :         SIZE : 8        OFFSET : 3256
+17 : NAME : temp10        TYPE : MATRIX        INITIAL VALUE :         SIZE : 8        OFFSET : 3264
+18 : NAME : temp11        TYPE : INT        INITIAL VALUE : 2        SIZE : 4        OFFSET : 3272
+19 : NAME : temp12        TYPE : INT        INITIAL VALUE : 3        SIZE : 4        OFFSET : 3276
+20 : NAME : temp13        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3280
+21 : NAME : temp14        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3284
+22 : NAME : temp15        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3288
+23 : NAME : temp16        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3292
+24 : NAME : temp17        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3296
+25 : NAME : temp18        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3300
+===================================================
+Quad Array
+0 : b = a
+1 : temp0 = ++a
+2 : b = temp0
+3 : return b
+4 : temp0 = a * b
+5 : c = temp0
+6 : temp1 = &a
+7 : d = temp1
+8 : temp2 = temp2 * 160
+9 : temp3 = temp3 * 8
+10 : temp3 = temp3 + temp2
+11 : temp4 = temp4 * 160
+12 : temp5 = temp5 * 8
+13 : temp5 = temp5 + temp4
+14 : temp6 = temp6 * 160
+15 : temp7 = temp7 * 8
+16 : temp7 = temp7 + temp6
+17 : temp8 = e[temp5]
+18 : temp9 = f[temp7]
+19 : temp10 = temp8 + temp9
+20 : e[temp3] = temp10
+21 : temp11 = temp11 * 160
+22 : temp12 = temp12 * 8
+23 : temp12 = temp12 + temp11
+24 : temp13 = *d
+25 : temp14 = temp13 + c
+26 : e[temp12] = temp14
+27 : param a
+28 : param b
+29 : b = call func , 2
+30 : if a < b then goto 32
+31 : goto 35
+32 : temp16 = b * c
+33 : a = temp16
+34 : goto 30
+35 : if a < b then goto 37
+36 : goto 39
+37 : temp18 = b * c
+38 : a = temp18

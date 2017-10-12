@@ -1,0 +1,54 @@
+Symbol Table
+0 : NAME : a        TYPE : INT        INITIAL VALUE : 10        SIZE : 4        OFFSET : 0
+1 : NAME : b        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 4
+2 : NAME : c        TYPE : MATRIX        INITIAL VALUE :         SIZE : 1600        OFFSET : 8
+3 : NAME : main        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 1608
+0 : NAME : retVal        TYPE : VOID        INITIAL VALUE :         SIZE : 0        OFFSET : 0
+1 : NAME : a        TYPE : INT        INITIAL VALUE : 10        SIZE : 4        OFFSET : 0
+2 : NAME : b        TYPE : INT        INITIAL VALUE : 10        SIZE : 4        OFFSET : 4
+3 : NAME : temp0        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 8
+4 : NAME : c        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 12
+5 : NAME : e        TYPE : MATRIX        INITIAL VALUE :         SIZE : 1600        OFFSET : 16
+6 : NAME : f        TYPE : MATRIX        INITIAL VALUE :         SIZE : 1600        OFFSET : 1616
+7 : NAME : temp1        TYPE : INT        INITIAL VALUE : 4        SIZE : 4        OFFSET : 3216
+8 : NAME : temp2        TYPE : INT        INITIAL VALUE : 5        SIZE : 4        OFFSET : 3220
+9 : NAME : temp3        TYPE : INT        INITIAL VALUE : 3        SIZE : 4        OFFSET : 3224
+10 : NAME : temp4        TYPE : INT        INITIAL VALUE : 2        SIZE : 4        OFFSET : 3228
+11 : NAME : temp5        TYPE : INT        INITIAL VALUE : 5        SIZE : 4        OFFSET : 3232
+12 : NAME : temp6        TYPE : INT        INITIAL VALUE : 6        SIZE : 4        OFFSET : 3236
+13 : NAME : temp7        TYPE : MATRIX        INITIAL VALUE :         SIZE : 8        OFFSET : 3240
+14 : NAME : temp8        TYPE : MATRIX        INITIAL VALUE :         SIZE : 8        OFFSET : 3248
+15 : NAME : temp9        TYPE : MATRIX        INITIAL VALUE :         SIZE : 8        OFFSET : 3256
+16 : NAME : temp10        TYPE : INT        INITIAL VALUE : 4        SIZE : 4        OFFSET : 3264
+17 : NAME : temp11        TYPE : INT        INITIAL VALUE : 5        SIZE : 4        OFFSET : 3268
+18 : NAME : temp12        TYPE : INT        INITIAL VALUE : 5        SIZE : 4        OFFSET : 3272
+19 : NAME : temp13        TYPE : INT        INITIAL VALUE : 6        SIZE : 4        OFFSET : 3276
+20 : NAME : temp14        TYPE : MATRIX        INITIAL VALUE :         SIZE : 8        OFFSET : 3280
+21 : NAME : temp15        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3288
+===================================================
+Quad Array
+0 : b = a
+1 : temp0 = a * b
+2 : c = temp0
+3 : temp1 = temp1 * 160
+4 : temp2 = temp2 * 8
+5 : temp2 = temp2 + temp1
+6 : temp3 = temp3 * 160
+7 : temp4 = temp4 * 8
+8 : temp4 = temp4 + temp3
+9 : temp5 = temp5 * 160
+10 : temp6 = temp6 * 8
+11 : temp6 = temp6 + temp5
+12 : temp7 = e[temp4]
+13 : temp8 = f[temp6]
+14 : temp9 = temp7 + temp8
+15 : e[temp2] = temp9
+16 : temp10 = temp10 * 160
+17 : temp11 = temp11 * 8
+18 : temp11 = temp11 + temp10
+19 : temp12 = temp12 * 160
+20 : temp13 = temp13 * 8
+21 : temp13 = temp13 + temp12
+22 : temp14 = f[temp13]
+23 : temp15 = a * temp14
+24 : e[temp11] = temp15

@@ -1,4 +1,4 @@
-#include "translator.h"
+#include "ass4_15CS30008_translator.h"
 
 type_t *type_global = new type_t();
 SymbolTable *ST = new SymbolTable();

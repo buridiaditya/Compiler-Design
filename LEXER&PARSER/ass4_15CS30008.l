@@ -1,8 +1,8 @@
 %{
 #define YYPRINT
-#include "translator.h"
-#include "ass3_15CS30008.tab.h"
-#include "ass3_15CS30008.tab.c"
+#include "ass4_15CS30008_translator.h"
+#include "ass4_15CS30008.tab.h"
+#include "ass4_15CS30008.tab.c"
 #define ERROR -1;
 int getTokenTypeCode(char*);
 %}
@@ -58,4 +58,9 @@ int getTokenTypeCode(char* a){
      		break;
 	}
 	return yytoknum[i];
+}
+int main(){
+    while(1)
+        yyparse();
+    return 0;
 }
