@@ -1897,7 +1897,7 @@
 		if(se_ != NULL)
 			ty2 = se_->getType();
 		
-		bool b1,b2;
+		bool b1 = false,b2 = false;
 		if($1->isAddress()){
 			yyerror("Invalid Assignment.");	
 		}
@@ -1971,9 +1971,6 @@
 			if($3->isFunctionCall()){
 				se2 = se_;
 				SymbolTable *st = se2->getNestedTable();
-				se2 = st->lookup("retVal");
-				ty2 = se2->getType();
-				se2 = STCurrent->gentemp(ty2);
 				qe = new QuadEntry(OP_CALL,se->getName(),se_->getName(),to_string($3->getNoOfParams()));
 				QA->emit(qe);
 			}

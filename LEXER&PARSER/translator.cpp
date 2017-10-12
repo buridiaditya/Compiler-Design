@@ -702,5 +702,29 @@ int getWidth(type_t* type){
 }
 
 bool typecheck(type_t* type1, type_t* type2){
+	type_n t1 = type1->getTypeName();
+	type_n t2 = type2->getTypeName();
+	if(!((t1 == MATRIX) ^ (t2 == MATRIX))){
+		if(type1->getNoOfElements() != type2->getNoOfElements())
+			return false;
+		else{
+			type1 = type1->getArrayType();
+			type2 = type2->getArrayType();
+			if(type1->isArray() && type1->getNoOfElements() != type2->getNoOfElements())
+				return false;
+		}
+	}
+	else if(t1 != t2){
+		if(t1 == INT){
+			if(t2 == DOUBLE)
+				type1 = type2;
+			else if(t2 == CHAR)
+				type2 = type1;
+		}
+		else if(t1 == DOUBLE){
+			if(t2 == INT || t2 == CHAR)
+				type2 = type1;
+		}
+	}
 	return true;
 }
