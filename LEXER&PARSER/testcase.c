@@ -16,7 +16,10 @@ void main(){
 	e[4][5] = e[3][2] + f[5][6];
 	e[2][3] = (*d) + c;
 	b = func(a,b);
-	while(a--){
-		a = 10;
+	while(a<b){
+		a = b*c;
+	}
+	if(a < b){
+		a = b * c;
 	}
 }

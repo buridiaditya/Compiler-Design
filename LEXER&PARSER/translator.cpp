@@ -132,9 +132,9 @@ init_t decl_t::getInitValue(){
 
 ///////////// EXP_T CLASS ///////////////////
 exp_t::exp_t(){
-	trueList = NULL;
-	falseList = NULL;
-	nextList = NULL;
+	trueList = new vector<int>(0);
+	falseList = new vector<int>(0);
+	nextList = new vector<int>(0);
 	checkAddress = false;
 	checkDeReference = false;
 	checkConstant = false;
@@ -144,9 +144,9 @@ exp_t::exp_t(){
 }
 
 exp_t::exp_t(SymbolEntry* SE_){
-	trueList = NULL;
-	falseList = NULL;
-	nextList = NULL;
+	trueList = new vector<int>(0);
+	falseList = new vector<int>(0);
+	nextList = new vector<int>(0);
 	checkAddress = false;
 	checkDeReference = false;
 	checkConstant = false;
@@ -478,6 +478,13 @@ QuadEntry::QuadEntry(OPCode op_,string *result_,string *argv1_,string *argv2_){
 	result = *result_;
 }
 
+QuadEntry::QuadEntry(OPCode op_,string result_,string *argv1_,string *argv2_){
+	op = op_;
+	argv1 = *argv1_;
+	argv2 = *argv2_;
+	result = result_;
+}
+
 QuadEntry::QuadEntry(OPCode op_,string *result_,string argv1_,string *argv2_){
 	op = op_;
 	argv1 = argv1_;
@@ -629,7 +636,10 @@ void QuadEntry::print(){
 }
 
 ////////////////// QUAD ARRAY //////////////////
+// Quad Entries are stored in a vector named entries
 QuadArray::QuadArray(){}
+
+// Used to push the Quad Entry into the entries vector. This effectively strores an instruction
 void QuadArray::emit(QuadEntry* qd){
 	entries.push_back(qd);
 }
@@ -649,21 +659,25 @@ void QuadArray::print(){
 }
 
 ////////////// BACKPATCHING //////////////	
+
 vector<int>* makelist(int instr){
-	vector<int>* list = new vector<int>();
+	vector<int>* list = new vector<int>(0);
 	list->push_back(instr); 
 	return list;
 }
 
 vector<int>* merge(vector<int>* list1,vector<int>* list2){
-	vector<int>* list = new vector<int>();
+	vector<int>* list = new vector<int>(0);
 	for(int i = 0; i < list1->size(); i++)
 		list->push_back(list1->at(i));
 	for(int i = 0; i < list2->size(); i++)
 		list->push_back(list2->at(i));
+
 	return list;
 }
 
+// Backpatching. Every Quad Entry with index number in the list ,
+//the result cell of the instruction will be replaced with "instr" 
 vector<int>* backpatch(vector<int>* list, int instr){
 	for(int i = 0; i < list->size(); i++){
 		QuadEntry* temp = QA->getEntry(list->at(i));
@@ -689,11 +703,12 @@ int getWidth(type_n type){
 		case FUNCTION:
 			return 0;
 		case MATRIX:
-			// TODO
+			return SIZE_OF_DOUBLE;
 			return size;
 	}
 }
 
+// Computes the size of a complex type
 int getWidth(type_t* type){
 	type_n type_ = type->getTypeName();
 	int size = 1;
@@ -708,6 +723,7 @@ int getWidth(type_t* type){
 	return getWidth(type_);
 }
 
+// Type casts whenever possible and updates the resultant types as pointers are passed.
 bool typecheck(type_t* type1, type_t* type2){
 	type_n t1 = type1->getTypeName();
 	type_n t2 = type2->getTypeName();

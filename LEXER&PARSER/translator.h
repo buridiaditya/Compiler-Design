@@ -251,6 +251,7 @@ public:
 	QuadEntry(OPCode op,string result,string argv1, string argv2);
 	QuadEntry(OPCode op,string result,string argv1);
 	QuadEntry(OPCode op,string result);
+	QuadEntry(OPCode op,string result,string* argv1, string* argv2);
 	QuadEntry(OPCode op,string* result,string* argv1, string* argv2);
 	QuadEntry(OPCode op,string* result,string* argv1);
 	QuadEntry(OPCode op,string* result);

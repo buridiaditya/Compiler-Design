@@ -33,7 +33,7 @@
 	// Decl is a decl_t type object for supporting declarations. Class details explained in ass4_15CS30008_translator.h
 	%type <decl> init_declarator declarator direct_declarator 
 	// exp is a exp_t type object for supporting expressions. Class details explained in ass4_15CS30008_translator.h
-	%type <exp> expression statement assignment_expression conditional_expression logical_OR_expression logical_AND_expression inclusive_OR_expression exclusive_OR_expression AND_expression equality_expression relational_expression shift_expression additive_expression multiplicative_expression cast_expression unary_expression postfix_expression primary_expression selection_statement iteration_statement initializer block_item_list block_item expression_opt
+	%type <exp> expression_statement expression statement assignment_expression conditional_expression logical_OR_expression logical_AND_expression inclusive_OR_expression exclusive_OR_expression AND_expression equality_expression relational_expression shift_expression additive_expression multiplicative_expression cast_expression unary_expression postfix_expression primary_expression selection_statement iteration_statement initializer block_item_list block_item expression_opt
 	// type is a type_t class object to store the type of a variable. Further explanation in ass4_15CS30008_translator.h
 	%type <type> pointer type_specifier declaration_specifiers
 	// list is vector<int> type object used for storing the instruction number for backpactching purpose.
@@ -1090,7 +1090,7 @@
 
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_LT_GOTO,se->getName(),se1->getName(),se2->getName());
+			qe = new QuadEntry(OP_IF_LT_GOTO,"",se1->getName(),se2->getName());
 			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
@@ -1184,7 +1184,7 @@
 
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_GT_GOTO,se->getName(),se1->getName(),se2->getName());
+			qe = new QuadEntry(OP_IF_GT_GOTO,"",se1->getName(),se2->getName());
 			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
@@ -1278,7 +1278,7 @@
 
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_LTE_GOTO,se->getName(),se1->getName(),se2->getName());
+			qe = new QuadEntry(OP_IF_LTE_GOTO,"",se1->getName(),se2->getName());
 			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
@@ -1372,7 +1372,7 @@
 
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_GTE_GOTO,se->getName(),se1->getName(),se2->getName());
+			qe = new QuadEntry(OP_IF_GTE_GOTO,"",se1->getName(),se2->getName());
 			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
@@ -1471,7 +1471,7 @@
 
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_EQ_GOTO,se->getName(),se1->getName(),se2->getName());
+			qe = new QuadEntry(OP_IF_EQ_GOTO,"",se1->getName(),se2->getName());
 			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
@@ -1565,7 +1565,7 @@
 
 		if(typecheck(ty1,ty2)){
 			se = STCurrent->gentemp(ty1);
-			qe = new QuadEntry(OP_IF_NEQ_GOTO,se->getName(),se1->getName(),se2->getName());
+			qe = new QuadEntry(OP_IF_NEQ_GOTO,"",se1->getName(),se2->getName());
 			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
 			$$->setTrueList(makelist(QA->getSize()));
@@ -2342,15 +2342,19 @@
 
 	statement : labeled_statement  
 	{
-		$$ = NULL;
+		$$ = new exp_t();
 		printf("statement <<--- labeled_statement\n");
 	}
 	| compound_statement 
 	{
-		$$ = NULL;
+		$$ = new exp_t();
 		printf("statement <<--- compound_statement\n");
 	}
-	| expression_statement {printf("statement <<--- expression_statement\n");}
+	| expression_statement 
+	{
+		$$ = $1;
+		printf("statement <<--- expression_statement\n");
+	}
 	| selection_statement	
 	{
 		$$ = $1;
@@ -2363,7 +2367,7 @@
 	}
 	| jump_statement	
 	{
-	 	$$ = NULL;
+	 	$$ = new exp_t();
 		printf("statement <<--- jump_statement\n");
 	}
 	;
@@ -2376,8 +2380,7 @@
 	compound_statement : '{' '}'  {printf("compound_statement : {}\n");}
 	| '{' block_item_list M'}'	
 	{
-		if($2 != NULL)
-			backpatch($2->getNextList(),$3);
+		backpatch($2->getNextList(),$3);
 		printf("compound_statement : {block_item_list}\n");
 	}
 	;
@@ -2389,19 +2392,16 @@
 	}
 	| block_item_list M block_item 
 	{
-		/*if($1 != NULL){
-			backpatch($1->getNextList(),$2);
-			$$->setNextList($3->getNextList());
-		}
-		else*/
-			$$ = NULL;
+		$$ = new exp_t();
+		backpatch($1->getNextList(),$2);
+		$$->setNextList(merge($$->getNextList(),$3->getNextList()));
 		printf("block_item_list <<--- block_item_list block_item\n");
 	}
 	;
 
 	block_item : declaration 
 	{
-		$$ = NULL;
+		$$ = new exp_t();
 		printf("block_item <<--- declaration\n");
 	}
 	| statement 
@@ -2412,17 +2412,19 @@
 	;
 
 	expression_statement : ';' {printf("expression_statement <<--- ;\n");}
-	| expression ';' {printf("expression_statement <<--- expression ;\n");}
+	| expression ';' {$$ = $1;printf("expression_statement <<--- expression ;\n");}
 	;
 
 	selection_statement : "if" '(' expression ')' M statement %prec "then" 
 	{
+		$$ = new exp_t();
 		backpatch($3->getTrueList(),$5);
 		$$->setNextList(merge($3->getFalseList(),$6->getNextList()));	
 		printf("selection_statement <<--- if (expression) statement\n");
 	}
 	| "if" '(' expression ')' M statement N "else" M statement 
 	{
+		$$ = new exp_t();
 		backpatch($3->getTrueList(),$5);
 		backpatch($3->getFalseList(),$9);
 		vector<int>* temp = merge($6->getNextList(),$7);
@@ -2445,17 +2447,17 @@
 
 	iteration_statement : "while" M '(' expression ')' M statement  
 	{
-		/*backpatch($7->getNextList(),$2);
+		$$ = new exp_t();
+		backpatch($7->getNextList(),$2);
 		backpatch($4->getTrueList(),$6);
 		$$->setNextList($4->getFalseList());
-		*/
-		$$ = NULL;
 		QuadEntry *qe = new QuadEntry(OP_GOTO,to_string($2));
 		QA->emit(qe);
 		printf("iteration_statement <<--- while (expression) statement \n");
 	}
 	| "do" M statement M "while" '(' expression ')' ';' 
 	{
+		$$ = new exp_t();
 		backpatch($7->getTrueList(),$2);
 		backpatch($3->getNextList(),$4);
 		$$->setNextList($7->getFalseList());
