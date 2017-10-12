@@ -7,7 +7,9 @@ SymbolTable *STCurrent = ST;
 QuadArray *QA = new QuadArray();
 
 //////////// TYPE_T CLASS /////////////////////
+// Constructors
 type_t::type_t(){}
+
 type_t::type_t(type_n type_){
 	type_name = type_;
 	if(type_ == POINTER)
@@ -28,21 +30,26 @@ type_t::type_t(type_n type_, bool isPointer_, bool isArray_){
 	noOfElements = 0;
 }
 
+// Setter to set type
 void type_t::setType(type_n type){
 	type_name = type;
 }
 
+// Setter to set Pointed type incase of a pointer
 void type_t::setPointedType(type_t* type_){
 	pointerCheck = true;
 	pointedType = type_;
 }
 
+// Setter to set the type of each array element incase of a array/Matrix type
+// no_ represents no of array elements
 void type_t::setArrayType(type_t* type_,int no_){
 	arrayCheck = true;
 	noOfElements = no_;
 	arrayType = type_;
 }
 
+// GETTERS
 type_t* type_t::getPointedType(){
 	return pointedType;
 }
@@ -637,7 +644,7 @@ QuadEntry* QuadArray::getEntry(int index){
 
 void QuadArray::print(){
 	for(int i = 0; i < entries.size(); i++){
-		cout << entries.size() << " : ";entries[i]->print();
+		cout << i << " : ";entries[i]->print();
 	}
 }
 
@@ -708,10 +715,11 @@ bool typecheck(type_t* type1, type_t* type2){
 		if(type1->getNoOfElements() != type2->getNoOfElements())
 			return false;
 		else{
-			type1 = type1->getArrayType();
-			type2 = type2->getArrayType();
-			if(type1->isArray() && type1->getNoOfElements() != type2->getNoOfElements())
+			if(type1->isArray() && type1->getNoOfElements() != type2->getNoOfElements()){
+				type1 = type1->getArrayType();
+				type2 = type2->getArrayType();
 				return false;
+			}
 		}
 	}
 	else if(t1 != t2){

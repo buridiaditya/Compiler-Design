@@ -18,17 +18,29 @@
 	%token-table
 	%nonassoc "then"
 	%nonassoc "else"
+	// INT_CONSTANT stores an integer type attribute
 	%token <integerVal> INT_CONSTANT 
+	// DOUBLE_CONSTANT stores a double type attribute
 	%token <doubleVal> DOUBLE_CONSTANT 
+	// CHAR_CONSTANT stores a character constant
 	%token <charVal> CHAR_CONSTANT 
+	// STRING_LITERAL stores a string type constant
 	%token <strVal> STRING_LITERAL
+	// IDENTIFIER stores a string type constant
 	%token <strVal> IDENTIFIER 
+	// unary_operator stores a string type unary operator "&" "*" "+" "-"
 	%type <strVal> unary_operator
+	// Decl is a decl_t type object for supporting declarations. Class details explained in ass4_15CS30008_translator.h
 	%type <decl> init_declarator declarator direct_declarator 
+	// exp is a exp_t type object for supporting expressions. Class details explained in ass4_15CS30008_translator.h
 	%type <exp> expression statement assignment_expression conditional_expression logical_OR_expression logical_AND_expression inclusive_OR_expression exclusive_OR_expression AND_expression equality_expression relational_expression shift_expression additive_expression multiplicative_expression cast_expression unary_expression postfix_expression primary_expression selection_statement iteration_statement initializer block_item_list block_item expression_opt
+	// type is a type_t class object to store the type of a variable. Further explanation in ass4_15CS30008_translator.h
 	%type <type> pointer type_specifier declaration_specifiers
+	// list is vector<int> type object used for storing the instruction number for backpactching purpose.
 	%type <list> N
+	// To store integer type attribute
 	%type <integerVal> M argument_expression_list
+	
 	%start start
 
 	%%
@@ -42,11 +54,13 @@
 	}
 	M: 
 	{
+		// Augmented for getting the next instruction number
 		$$ = QA->getSize();
 	}
 	;
 	N:
 	{
+		// Augmented to generate GOTO instruction when necessary
 		$$ = makelist(QA->getSize());
 		QuadEntry *qe = new QuadEntry(OP_GOTO,"");
 		QA->emit(qe);
@@ -2431,9 +2445,11 @@
 
 	iteration_statement : "while" M '(' expression ')' M statement  
 	{
-		backpatch($7->getNextList(),$2);
+		/*backpatch($7->getNextList(),$2);
 		backpatch($4->getTrueList(),$6);
 		$$->setNextList($4->getFalseList());
+		*/
+		$$ = NULL;
 		QuadEntry *qe = new QuadEntry(OP_GOTO,to_string($2));
 		QA->emit(qe);
 		printf("iteration_statement <<--- while (expression) statement \n");
@@ -2460,6 +2476,7 @@
 		else{
 			SymbolEntry *se1 = $2->getSymbolEntry();
 			qe = new QuadEntry(OP_RETURN,se1->getName());
+			QA->emit(qe);
 		}
 		printf("jump_statement <<--- return expression_opt ;\n");
 	}
