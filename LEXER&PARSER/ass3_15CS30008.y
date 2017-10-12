@@ -115,17 +115,16 @@
 		if(ty == NULL)
 			yyerror("Array Element Does not Exist");
 		int width_ = getWidth(ty);
-		SymbolEntry* se3 = STCurrent->gentemp(ty1);
-		QuadEntry* qe0 = new QuadEntry(OP_MUL,se3->getName(),se1->getName(),to_string(width_));	
+		QuadEntry* qe0 = new QuadEntry(OP_MUL,se1->getName(),se1->getName(),to_string(width_));	
 		QA->emit(qe0);
 		if($1->isArrayAccess()){
 			se2 = $1->getArraySum();
-			qe0 = new QuadEntry(OP_ADD,se3->getName(),se3->getName(),se2->getName());
+			qe0 = new QuadEntry(OP_ADD,se1->getName(),se1->getName(),se2->getName());
 			QA->emit(qe0);
 		}
 		se2 = new SymbolEntry(se);
 		se2->setType(ty);
-		$$->setArrayAccess(true,se3);
+		$$->setArrayAccess(true,se1);
 		$$->setSymbolEntry(se2);
 		printf("postfix_expression <<--- postfix_expression[expression]\n");
 	}
