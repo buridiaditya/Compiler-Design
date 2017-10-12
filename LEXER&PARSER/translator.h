@@ -230,6 +230,9 @@ private:
 	string result;
 };
 
+
+/////// QUAD ARRAY CLASS //////////
+
 class QuadArray{
 public:
 	QuadArray();

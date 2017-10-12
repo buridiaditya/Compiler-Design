@@ -55,6 +55,9 @@
 	primary_expression : IDENTIFIER 
 	{
 		SymbolEntry* se = STCurrent->lookup($1); 
+		if(se == NULL){
+			se = ST->lookup($1);
+		}
 		$$ = new exp_t(se);
 		printf("primary_expression <<--- IDENTIFIER\n");
 	}
@@ -213,8 +216,8 @@
 			QA->emit(qe);
 		}
 
-		if(ty1->getTypeName() != DOUBLE){
-			se = STCurrent->gentemp(ty1);
+		if(t1->getTypeName() != DOUBLE){
+			se = STCurrent->gentemp(t1);
 			qe = new QuadEntry(OP_INCR,se->getName(),se1->getName());
 			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
@@ -263,8 +266,8 @@
 			QA->emit(qe);
 		}
 
-		if(ty1->getTypeName() != DOUBLE){
-			se = STCurrent->gentemp(ty1);
+		if(t1->getTypeName() != DOUBLE){
+			se = STCurrent->gentemp(t1);
 			qe = new QuadEntry(OP_DECR,se->getName(),se1->getName());
 			$$ = new exp_t(se);
 			$$->setSymbolEntry(se);
@@ -1879,7 +1882,7 @@
 	{
 		$$ = $1;	
 		printf("assignment_expression <<--- conditional_expression\n");
-	}
+	}	
 	| unary_expression assignment_operator assignment_expression 
 	{
 		SymbolEntry *se = $1->getSymbolEntry();
@@ -1966,7 +1969,7 @@
 		}
 		else if(!b1 && b2){
 			if($3->isFunctionCall()){
-				se2 = ST->lookup(se_->getName());
+				se2 = se_;
 				SymbolTable *st = se2->getNestedTable();
 				se2 = st->lookup("retVal");
 				ty2 = se2->getType();
@@ -2326,8 +2329,16 @@
 	| '.' IDENTIFIER {printf("designator <<--- . IDENTIFIER\n");}
 	;
 
-	statement : labeled_statement  {printf("statement <<--- labeled_statement\n");}
-	| compound_statement {printf("statement <<--- compound_statement\n");}
+	statement : labeled_statement  
+	{
+		$$ = NULL;
+		printf("statement <<--- labeled_statement\n");
+	}
+	| compound_statement 
+	{
+		$$ = NULL;
+		printf("statement <<--- compound_statement\n");
+	}
 	| expression_statement {printf("statement <<--- expression_statement\n");}
 	| selection_statement	
 	{
@@ -2339,7 +2350,11 @@
 		$$ = $1;
 		printf("statement <<--- iteration_statement\n");
 	}
-	| jump_statement	{printf("statement <<--- jump_statement\n");}
+	| jump_statement	
+	{
+	 	$$ = NULL;
+		printf("statement <<--- jump_statement\n");
+	}
 	;
 
 	labeled_statement : IDENTIFIER ':' statement {printf("labeled_statement <<--- IDENTIFIER : statement\n");}
@@ -2363,11 +2378,11 @@
 	}
 	| block_item_list M block_item 
 	{
-		if($1 != NULL){
+		/*if($1 != NULL){
 			backpatch($1->getNextList(),$2);
 			$$->setNextList($3->getNextList());
 		}
-		else
+		else*/
 			$$ = NULL;
 		printf("block_item_list <<--- block_item_list block_item\n");
 	}
@@ -2446,10 +2461,7 @@
 		if( $2 == NULL )
 			qe = new QuadEntry(OP_RETURN,"");
 		else{
-			string *name = new string("retVal");
-			SymbolEntry *se = STCurrent->lookup(name);
 			SymbolEntry *se1 = $2->getSymbolEntry();
-			se->initialize(se1->getInitialValue());
 			qe = new QuadEntry(OP_RETURN,se1->getName());
 		}
 		printf("jump_statement <<--- return expression_opt ;\n");
