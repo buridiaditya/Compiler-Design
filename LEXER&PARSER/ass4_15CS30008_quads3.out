@@ -3,11 +3,14 @@ Symbol Table
 1 : NAME : b        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 4
 2 : NAME : c        TYPE : MATRIX        INITIAL VALUE :         SIZE : 1600        OFFSET : 8
 3 : NAME : func        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 1608
-0 : NAME : a        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 0
-1 : NAME : b        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 4
-2 : NAME : retVal        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 8
+------------------Nested Table-----------------------
+0 : NAME : retVal        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 0
+1 : NAME : a        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 4
+2 : NAME : b        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 8
 3 : NAME : temp0        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 12
+-----------------------------------------------------
 4 : NAME : main        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 1608
+------------------Nested Table-----------------------
 0 : NAME : retVal        TYPE : VOID        INITIAL VALUE :         SIZE : 0        OFFSET : 0
 1 : NAME : a        TYPE : INT        INITIAL VALUE : 10        SIZE : 4        OFFSET : 0
 2 : NAME : b        TYPE : INT        INITIAL VALUE : 10        SIZE : 4        OFFSET : 4
@@ -34,6 +37,7 @@ Symbol Table
 23 : NAME : temp16        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3292
 24 : NAME : temp17        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3296
 25 : NAME : temp18        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3300
+-----------------------------------------------------
 ===================================================
 Quad Array
 0 : b = a

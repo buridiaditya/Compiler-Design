@@ -363,8 +363,11 @@ void SymbolEntry::print(){
 			break;
 	}
 	cout << "NAME : " << *name << "        TYPE : " << a << "        INITIAL VALUE : " << b << "        SIZE : " << size << "        OFFSET : " << offset << endl;
-	if(type->getTypeName() == FUNCTION)
+	if(type->getTypeName() == FUNCTION){
+		cout << "------------------Nested Table-----------------------" << endl;
 		nestedTable->print();
+		cout << "-----------------------------------------------------" << endl;
+	}
 }
 
 ///////////////// SYMBOL TABLE ////////////////////

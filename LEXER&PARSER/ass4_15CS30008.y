@@ -2228,6 +2228,8 @@
 	{ 
 		STStack.push_back(STCurrent);
 		STCurrent = new SymbolTable();	
+		string* temp_string = new string("retVal");
+		SymbolEntry* se = STCurrent->gentemp(type_global,temp_string);
 	} 
 	parameter_type_list ')' 
 	{
@@ -2235,9 +2237,6 @@
 		type_t* ty = new type_t(FUNCTION);
 		$$->setType(ty);
 		$$->setNestedTable(STCurrent); 
-		string* temp_string = new string("retVal");
-		SymbolEntry* se = STCurrent->gentemp(type_global,temp_string);
-		
 	}
 	| direct_declarator '(' 
 	{
