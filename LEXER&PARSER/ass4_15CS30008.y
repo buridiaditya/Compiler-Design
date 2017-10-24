@@ -233,10 +233,10 @@
 		}
 
 		if(t1->getTypeName() != DOUBLE){
-			se = STCurrent->gentemp(t1);
-			qe = new QuadEntry(OP_INCR,se->getName(),se1->getName());
-			$$ = new exp_t(se);
-			$$->setSymbolEntry(se);
+			//se = STCurrent->gentemp(t1);
+			qe = new QuadEntry(OP_INCR,se1->getName(),se1->getName());
+			$$ = new exp_t(se1);
+			$$->setSymbolEntry(se1);
 			QA->emit(qe);
 		}
 		else
@@ -283,10 +283,10 @@
 		}
 
 		if(t1->getTypeName() != DOUBLE){
-			se = STCurrent->gentemp(t1);
-			qe = new QuadEntry(OP_DECR,se->getName(),se1->getName());
-			$$ = new exp_t(se);
-			$$->setSymbolEntry(se);
+			//se = STCurrent->gentemp(t1);
+			qe = new QuadEntry(OP_DECR,se1->getName(),se1->getName());
+			$$ = new exp_t(se1);
+			$$->setSymbolEntry(se1);
 			QA->emit(qe);
 		}
 		else
@@ -1896,8 +1896,7 @@
 
 	assignment_expression : conditional_expression 
 	{
-		$$ = $1;	
-		
+		$$ = $1;		
 	}	
 	| unary_expression assignment_operator assignment_expression 
 	{
@@ -2464,8 +2463,19 @@
 		$$->setNextList($7->getFalseList());
 		
 	}
-	| "for" '(' expression_opt ';' expression_opt ';' expression_opt ')' statement {}
-	| "for" '(' declaration expression_opt';' expression_opt ')' statement {}
+	// 1	 2		3  			4  5		6		 7  8		9		10 11  12   13
+ 	| "for" '(' expression_opt ';' M expression_opt ';' M expression_opt N ')' M statement 
+	{
+		$$ = new exp_t();
+		$$->setNextList($6->getFalseList());
+		backpatch($6->getTrueList(),$12);
+		backpatch($13->getNextList(),$8);
+		backpatch($10,$5);
+	}
+	| "for" '(' declaration expression_opt';' expression_opt ')' statement 
+	{
+		
+	}
 	;
 
 	jump_statement : "goto" IDENTIFIER ';' {}

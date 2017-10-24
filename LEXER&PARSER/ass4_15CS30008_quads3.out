@@ -7,7 +7,6 @@ Symbol Table
 0 : NAME : retVal        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 0
 1 : NAME : a        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 4
 2 : NAME : b        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 8
-3 : NAME : temp0        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 12
 -----------------------------------------------------
 4 : NAME : main        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 1608
 ------------------Nested Table-----------------------
@@ -41,8 +40,8 @@ Symbol Table
 ===================================================
 Quad Array
 0 : b = a
-1 : temp0 = ++a
-2 : b = temp0
+1 : a = ++a
+2 : b = a
 3 : return b
 4 : temp0 = a * b
 5 : c = temp0

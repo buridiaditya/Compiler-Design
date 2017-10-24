@@ -4,7 +4,6 @@ Symbol Table
 0 : NAME : retVal        TYPE : POINTER        INITIAL VALUE :         SIZE : 4        OFFSET : 0
 1 : NAME : a        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 4
 2 : NAME : b        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 8
-3 : NAME : temp0        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 12
 -----------------------------------------------------
 1 : NAME : main        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 0
 ------------------Nested Table-----------------------
@@ -15,8 +14,8 @@ Symbol Table
 -----------------------------------------------------
 ===================================================
 Quad Array
-0 : temp0 = ++a
-1 : b = temp0
+0 : a = ++a
+1 : b = a
 2 : return b
 3 : param a
 4 : param b

@@ -26,6 +26,8 @@ Symbol Table
 19 : NAME : temp13        TYPE : INT        INITIAL VALUE : 6        SIZE : 4        OFFSET : 3276
 20 : NAME : temp14        TYPE : MATRIX        INITIAL VALUE :         SIZE : 8        OFFSET : 3280
 21 : NAME : temp15        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3288
+22 : NAME : temp16        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3292
+23 : NAME : temp17        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 3296
 -----------------------------------------------------
 ===================================================
 Quad Array
@@ -54,3 +56,8 @@ Quad Array
 22 : temp14 = f[temp13]
 23 : temp15 = a * temp14
 24 : e[temp11] = temp15
+25 : if a > temp16 then goto 29
+26 : goto 30
+27 : a = --a
+28 : goto 25
+29 : b = ++b
