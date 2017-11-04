@@ -71,7 +71,9 @@ typedef enum {
 	OP_GOTO,
 	OP_PARAM,
 	OP_CALL,
-	OP_RETURN
+	OP_RETURN,
+	OP_FUNC_START,
+	OP_FUNC_END
 }OPCode;
 
 //////////////////////////////////////////////////////
@@ -134,7 +136,7 @@ public:
 	int getSize();
 	bool checkInitialize();
 	init_t getInitialValue();
-	SymbolTable* getNestedTable();
+	SymbolTable* getNestedTable();	
 	void print();
 private:
 	string* name;
@@ -159,6 +161,8 @@ public:
 	SymbolEntry* gentemp(decl_t* dec);
 	SymbolEntry* gentemp(type_t* type,string* name_);
 	SymbolEntry* gentemp(SymbolEntry* se);
+	SymbolTable* getParentTable();
+	void setParentTable(SymbolTable* st);
 	int getOffset();
 	void setOffset(int offset_);
 	void update(string* name,init_t initValue);
@@ -167,6 +171,7 @@ private:
 	int offset;
 	int tempNo;
 	vector<SymbolEntry*> entries;
+	SymbolTable* parentTable;
 };
 
 //////////////////////////////////////////////////////
@@ -255,20 +260,25 @@ public:
 	QuadEntry(OPCode op,string* result,string* argv1, string* argv2);
 	QuadEntry(OPCode op,string* result,string* argv1);
 	QuadEntry(OPCode op,string* result);
+	QuadEntry(OPCode op);
 	QuadEntry(OPCode op,string* result,string* argv1, string argv2);
 	QuadEntry(OPCode op,string* result,string argv1, string* argv2);
 	void setArgv1(string argv);
 	void setArgv2(string argv);
 	void setResult(string result_);
+	void setLabel(string label_);
+	OPCode getOPCode();
 	string getArgv1();
 	string getArgv2();
 	string getResult();
+	string getLabel();
 	void print();
 private:
 	OPCode op;
 	string argv1;
 	string argv2;
 	string result;
+	string label;
 };
 
 //////////////////////////////////////////////////////

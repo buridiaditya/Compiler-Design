@@ -1,0 +1,35 @@
+Symbol Table
+0 : NAME : main        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 0
+------------------Nested Table-----------------------
+0 : NAME : retVal        TYPE : VOID        INITIAL VALUE :         SIZE : 0        OFFSET : 0
+1 : NAME : a        TYPE : INT        INITIAL VALUE : 9        SIZE : 4        OFFSET : 0
+2 : NAME : b        TYPE : INT        INITIAL VALUE : 18        SIZE : 4        OFFSET : 4
+3 : NAME : c        TYPE : DOUBLE        INITIAL VALUE : 7.270000        SIZE : 8        OFFSET : 8
+4 : NAME : d        TYPE : DOUBLE        INITIAL VALUE : 0.000000        SIZE : 8        OFFSET : 16
+5 : NAME : e        TYPE : CHAR        INITIAL VALUE : 0        SIZE : 1        OFFSET : 24
+6 : NAME : f        TYPE : CHAR        INITIAL VALUE : 39        SIZE : 1        OFFSET : 25
+7 : NAME : A        TYPE : MATRIX        INITIAL VALUE :         SIZE : 72        OFFSET : 26
+8 : NAME : temp0        TYPE : INT        INITIAL VALUE : 38932384        SIZE : 4        OFFSET : 98
+9 : NAME : temp1        TYPE : INT        INITIAL VALUE : 1        SIZE : 4        OFFSET : 102
+10 : NAME : temp2        TYPE : INT        INITIAL VALUE : 1        SIZE : 4        OFFSET : 106
+-----------------------------------------------------
+===================================================
+Quad Array
+0 : OP_FUNC_START main
+1 : d = c
+2 : e = a
+3 : a = -a
+4 : a = a
+5 : a = a - a
+6 : a = a + a
+7 : a = a * a
+8 : a = a / a
+9 : a = a %% a
+10 : if a > b then goto 12
+11 : goto 14
+12 : b = b - temp1
+13 : goto 15
+14 : b = b + temp2
+15 : a = a >> b
+16 : a = a | b
+17 : OP_FUNC_END

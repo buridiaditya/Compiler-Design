@@ -2523,6 +2523,8 @@ assignment_operator : '='
 	} 
 	parameter_type_list ')' 
 	{
+		QuadEntry* qe = new QuadEntry(OP_FUNC_START,$1->getName());
+		QA->emit(qe);
 		$$ = $1;
 		type_t* ty = new type_t(FUNCTION);
 		$$->setType(ty);
@@ -2534,6 +2536,8 @@ assignment_operator : '='
 	}
 	identifier_list ')' 
 	{
+		QuadEntry* qe = new QuadEntry(OP_FUNC_START,$1->getName());
+		QA->emit(qe);
 		$$ = $1;
 		type_t* ty = new type_t(FUNCTION);
 		$$->setType(ty);
@@ -2545,6 +2549,8 @@ assignment_operator : '='
 	}
 	| direct_declarator '(' ')' 
 	{
+		QuadEntry* qe = new QuadEntry(OP_FUNC_START,$1->getName());
+		QA->emit(qe);
 		$$ = $1;
 		STStack.push_back(STCurrent);
 		STCurrent = new SymbolTable();
@@ -2843,6 +2849,8 @@ assignment_operator : '='
 
 	function_definition : declaration_specifiers declarator declaration_list compound_statement 
 	{
+		QuadEntry* qe = new QuadEntry(OP_FUNC_END,$2->getName());
+		QA->emit(qe);
 		SymbolEntry *se = (STStack.back())->gentemp($2);
 		se->setNestedTable(STCurrent);
 		STCurrent = STStack.back();
@@ -2851,6 +2859,8 @@ assignment_operator : '='
 	}
 	| declaration_specifiers declarator compound_statement 
 	{
+		QuadEntry* qe = new QuadEntry(OP_FUNC_END,$2->getName());
+		QA->emit(qe);
 		SymbolEntry *se = (STStack.back())->gentemp($2);
 		se->setNestedTable(STCurrent);
 		STCurrent = STStack.back();
