@@ -60,7 +60,9 @@ int getTokenTypeCode(char* a){
 	return yytoknum[i];
 }
 int main(){
-    while(1)
-        yyparse();
+	while(yyparse()){
+        
+	}
+	 generateTargetCode();
     return 0;
 }

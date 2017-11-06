@@ -19,8 +19,9 @@ int mul(int a,int b){
 int main(){
 	
 	int c = 3,a = 4;
-	int b = mul(c,(mul(a,1)));
-        double d = fib(b-1) + fib(fib(b-1));
+	int b = mul(c,(mul(a,a)));
+    //int b = 1;
+	double d = fib(b-1) + fib(fib(b-1));
 	char e = fib(d);
 	return 0;
 }

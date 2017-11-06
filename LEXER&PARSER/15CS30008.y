@@ -54,7 +54,7 @@
 		cout << "===================================================" << endl;
 		cout << "Quad Array" << endl;
 		QA->print();
-		exit(0);
+		//exit(0);
 	}
 	M: 
 	{
@@ -104,13 +104,12 @@
 		
 	}
 	|STRING_LITERAL 
-	{
+	{	
 		
 	}
 	|'('expression')' 
 	{
-		$$ = $2;
-		
+		$$ = $2;	
 	}
 	;
 
@@ -2325,7 +2324,14 @@ assignment_operator : '='
 	expression : assignment_expression 
 	{
 		$$ = $1;
-		
+		type_t *ty2;
+		SymbolEntry* se2;
+		if($1->isConstant()){
+			ty2 = new type_t($1->getConstantType(),false,false);
+			se2 = STCurrent->gentemp(ty2);
+			se2->initialize($1->getConstantVal());
+			$$ = new exp_t(se2);
+		}
 	}
 	| expression ',' assignment_expression 
 	{
@@ -2518,6 +2524,7 @@ assignment_operator : '='
 	{ 
 		STStack.push_back(STCurrent);
 		STCurrent = new SymbolTable();	
+		STCurrent->setParentTable(STStack.back());
 		string* temp_string = new string("retVal");
 		SymbolEntry* se = STCurrent->gentemp(type_global,temp_string);
 	} 
@@ -2542,6 +2549,7 @@ assignment_operator : '='
 		type_t* ty = new type_t(FUNCTION);
 		$$->setType(ty);
 		STCurrent = new SymbolTable();
+		STCurrent->setParentTable(STStack.back());
 		$$->setNestedTable(STCurrent); 
 		string* temp_string = new string("retVal");
 		SymbolEntry* se = STCurrent->gentemp(type_global,temp_string);		
@@ -2554,6 +2562,7 @@ assignment_operator : '='
 		$$ = $1;
 		STStack.push_back(STCurrent);
 		STCurrent = new SymbolTable();
+		STCurrent->setParentTable(STStack.back());
 		type_t* ty = new type_t(FUNCTION);
 		$$->setType(ty);
 		$$->setNestedTable(STCurrent); 
@@ -2847,22 +2856,27 @@ assignment_operator : '='
 	}
 	;
 
-	function_definition : declaration_specifiers declarator declaration_list compound_statement 
+	function_definition : declaration_specifiers declarator declaration_list 
+	{ 
+		SymbolEntry *se = (STStack.back())->gentemp($2);
+		se->setNestedTable(STCurrent);
+	} 
+	compound_statement 
 	{
 		QuadEntry* qe = new QuadEntry(OP_FUNC_END,$2->getName());
 		QA->emit(qe);
-		SymbolEntry *se = (STStack.back())->gentemp($2);
-		se->setNestedTable(STCurrent);
 		STCurrent = STStack.back();
 		STStack.pop_back();
-		
 	}
-	| declaration_specifiers declarator compound_statement 
+	| declaration_specifiers declarator 
+	{
+		SymbolEntry *se = (STStack.back())->gentemp($2);
+		se->setNestedTable(STCurrent);
+	}
+	compound_statement 
 	{
 		QuadEntry* qe = new QuadEntry(OP_FUNC_END,$2->getName());
 		QA->emit(qe);
-		SymbolEntry *se = (STStack.back())->gentemp($2);
-		se->setNestedTable(STCurrent);
 		STCurrent = STStack.back();
 		STStack.pop_back();
 		

@@ -17,7 +17,7 @@ Symbol Table
 6 : NAME : temp2        TYPE : INT        INITIAL VALUE : 2        SIZE : 4        OFFSET : 24
 7 : NAME : temp3        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 28
 8 : NAME : temp4        TYPE : INT        INITIAL VALUE : 20        SIZE : 4        OFFSET : 32
-9 : NAME : temp5        TYPE : INT        INITIAL VALUE : 9408880        SIZE : 4        OFFSET : 36
+9 : NAME : temp5        TYPE : INT        INITIAL VALUE : 35755104        SIZE : 4        OFFSET : 36
 10 : NAME : temp6        TYPE : INT        INITIAL VALUE : 2        SIZE : 4        OFFSET : 40
 11 : NAME : temp7        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 44
 12 : NAME : temp8        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 48
@@ -27,7 +27,7 @@ Quad Array
 0 : OP_FUNC_START add
 1 : temp0 = a + b
 2 : return temp0
-3 : OP_FUNC_END
+3 : OP_FUNC_END add
 4 : OP_FUNC_START main
 5 : param a
 6 : param b
@@ -41,4 +41,68 @@ Quad Array
 14 : temp7 = c + temp6
 15 : c = temp7
 16 : return temp8
-17 : OP_FUNC_END
+17 : OP_FUNC_END main
+-----------------------------------------------TARGET CODE-----------------------------------------------
+	.globl	add
+	.type	add, @function
+add:
+	pushq	%%rbp
+	movq	%%rsp, %%rbp
+	subq	$16, %%rsp
+	movq	-4(%%rsp), %%rax
+	movq	-8(%%rsp), %%rdx
+	addq	%%rdx, %%rax
+	movq	%%rax, -12(%%rsp)
+	movq	-12(%%rsp), %%rax
+	leave
+	ret
+	leave
+	ret
+	.size	add, .-add
+	.globl	main
+	.type	main, @function
+main:
+	pushq	%%rbp
+	movq	%%rsp, %%rbp
+	subq	$52, %%rsp
+	movq	-4(%%rsp), %%rax
+	pushq	%%rax
+	movq	-8(%%rsp), %%rax
+	pushq	%%rax
+	movq	-0(%%rsp), %%rax
+	movq	%%rax, -12(%%rsp)
+	movq	-12(%%rsp), %%rax
+	movq	-0(%%rsp), %%rdx
+	movq	%%rdx, (%%rax)
+	movq	-12(%%rsp), %%rax
+	cmpq	%%rax, -16(%%rsp)
+	jl	
+	jmp	
+	movq	-12(%%rsp), %%rax
+	movq	-24(%%rsp), %%rdx
+	imulq	rdx, rax
+	movq	%%rax, -28(%%rsp)
+	movq	-28(%%rsp), %%rax
+	movq	%%rax, -12(%%rsp)
+	movq	-12(%%rsp), %%rax
+	movq	-28(%%rsp), %%rdx
+	movq	%%rdx, (%%rax)
+	movq	-12(%%rsp), %%rax
+	cmpq	%%rax, -32(%%rsp)
+	jge	
+	jmp	
+	movq	-12(%%rsp), %%rax
+	movq	-40(%%rsp), %%rdx
+	addq	%%rdx, %%rax
+	movq	%%rax, -44(%%rsp)
+	movq	-44(%%rsp), %%rax
+	movq	%%rax, -12(%%rsp)
+	movq	-12(%%rsp), %%rax
+	movq	-44(%%rsp), %%rdx
+	movq	%%rdx, (%%rax)
+	movq	-48(%%rsp), %%rax
+	leave
+	ret
+	leave
+	ret
+	.size	main, .-main

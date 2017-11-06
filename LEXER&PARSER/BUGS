@@ -1,6 +1,4 @@
-- local Symbol Table searched inside compound expression. If variable not found in local should search in global.
-Update look up in SymbolTable use parent Table
-- same as above in function parameters during function call.
+- Function Parameters cannot be constants
 - Matrix initialization.
 - Type Conversion.
 - Matrix operation Transpose.
