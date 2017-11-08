@@ -9,7 +9,7 @@ Symbol Table
 5 : NAME : e        TYPE : CHAR        INITIAL VALUE : 0        SIZE : 8        OFFSET : 40
 6 : NAME : f        TYPE : CHAR        INITIAL VALUE : 39        SIZE : 8        OFFSET : 48
 7 : NAME : A        TYPE : MATRIX        INITIAL VALUE :         SIZE : 72        OFFSET : 56
-8 : NAME : temp0        TYPE : INT        INITIAL VALUE : 28930144        SIZE : 8        OFFSET : 128
+8 : NAME : temp0        TYPE : INT        INITIAL VALUE : 38670432        SIZE : 8        OFFSET : 128
 9 : NAME : temp1        TYPE : INT        INITIAL VALUE : 1        SIZE : 8        OFFSET : 136
 10 : NAME : temp2        TYPE : INT        INITIAL VALUE : 1        SIZE : 8        OFFSET : 144
 -----------------------------------------------------

@@ -17,7 +17,7 @@ Symbol Table
 6 : NAME : temp2        TYPE : INT        INITIAL VALUE : 2        SIZE : 8        OFFSET : 56
 7 : NAME : temp3        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 64
 8 : NAME : temp4        TYPE : INT        INITIAL VALUE : 20        SIZE : 8        OFFSET : 72
-9 : NAME : temp5        TYPE : INT        INITIAL VALUE : 39207536        SIZE : 8        OFFSET : 80
+9 : NAME : temp5        TYPE : INT        INITIAL VALUE : 35828336        SIZE : 8        OFFSET : 80
 10 : NAME : temp6        TYPE : INT        INITIAL VALUE : 2        SIZE : 8        OFFSET : 88
 11 : NAME : temp7        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 96
 12 : NAME : temp8        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 104
@@ -31,7 +31,7 @@ Quad Array
 4 : OP_FUNC_START main
 5 : param a
 6 : param b
-7 : c = add
+7 : c = call add , 2
 8 : if c < temp0 then goto 10
 9 : goto 12
 10 : temp3 = c * temp2
@@ -72,11 +72,10 @@ main:
 	pushq	%%rax
 	movq	-16(%%rbp), %%rax
 	pushq	%%rax
-	movq	8(%%rbp), %%rax
-	movq	%%rax, -24(%%rbp)
-	movq	-24(%%rbp), %%rax
-	movq	8(%%rbp), %%rdx
-	movq	%%rdx, (%%rax)
+	subq	8, %%rsp
+	call	add
+	movq	(%%rsp), -24(%%rbp)
+	addq	24, %%rsp
 	movq	-24(%%rbp), %%rax
 	cmpq	%%rax, -32(%%rbp)
 	jl	.L0
