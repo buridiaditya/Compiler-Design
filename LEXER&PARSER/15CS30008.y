@@ -2032,10 +2032,12 @@
 		else if($1->isFunctionCall()){
 			yyerror("Invalid Assignment.");
 		}
-		if($1->isArrayAccess() || $1->isDeReference())
+		if($1->isArrayAccess() || $1->isDeReference()){
 			b1 = true;
-		if($3->isFunctionCall() || $3->isArrayAccess() || $3->isDeReference() || $3->isAddress() || $3->isConstant())
+		}
+		if($3->isFunctionCall() || $3->isArrayAccess() || $3->isDeReference() || $3->isAddress() || $3->isConstant()){
 			b2 = true;
+		}
 
 		if(b1 && b2){
 			if($3->isFunctionCall()){
@@ -2182,9 +2184,7 @@
 
 		}
 		else if(!b1 && b2){
-			ty1 = se->getType();
-			se1 = STCurrent->gentemp(ty1);
-				
+	
 			if($3->isFunctionCall()){
 				se2 = se_;
 				SymbolTable *st = se2->getNestedTable();
@@ -2207,6 +2207,9 @@
 				se2 = STCurrent->lookup(se1->getName());
 				se2->initialize($3->getConstantVal());
 			}
+			ty1 = se->getType();
+			se1 = STCurrent->gentemp(ty1);
+			
 			if((*$2).compare("=") != 0){
 				
 				if($2->compare("*=") == 0){
@@ -2525,11 +2528,13 @@ assignment_operator : '='
 		STStack.push_back(STCurrent);
 		STCurrent = new SymbolTable();	
 		STCurrent->setParentTable(STStack.back());
-		string* temp_string = new string("retVal");
-		SymbolEntry* se = STCurrent->gentemp(type_global,temp_string);
 	} 
 	parameter_type_list ')' 
 	{
+
+		string* temp_string = new string("retVal");
+		SymbolEntry* se = STCurrent->gentemp(type_global,temp_string);
+
 		QuadEntry* qe = new QuadEntry(OP_FUNC_START,$1->getName());
 		QA->emit(qe);
 		$$ = $1;

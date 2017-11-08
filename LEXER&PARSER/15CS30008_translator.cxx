@@ -333,6 +333,12 @@ SymbolTable* SymbolEntry::getNestedTable(){
 	return nestedTable;
 }
 
+
+void SymbolEntry::setOffset(int a){
+	offset = a;
+}
+
+
 void SymbolEntry::print(){
 	string a;
 	string b = "";
@@ -404,7 +410,7 @@ SymbolEntry* SymbolTable::gentemp(type_t* type){
 	tempName->append(to_string(tempNo));
 	tempNo++;
 	int width_ = getWidth(type);
-	temp = new SymbolEntry(tempName,type,width_,offset,NULL);
+	temp = new SymbolEntry(tempName,type,width_,offset+8,NULL);
 	offset += width_;
 	entries.push_back(temp);
 	return temp;
@@ -413,7 +419,7 @@ SymbolEntry* SymbolTable::gentemp(type_t* type){
 SymbolEntry* SymbolTable::gentemp(type_t* type,string* name_){
 	SymbolEntry* temp;
 	int width_ = getWidth(type);
-	temp = new SymbolEntry(name_,type,width_,offset,NULL);
+	temp = new SymbolEntry(name_,type,width_,offset+8,NULL);
 	offset += width_;
 	entries.push_back(temp);
 	return temp;
@@ -423,7 +429,7 @@ SymbolEntry* SymbolTable::gentemp(decl_t* decl){
 	SymbolEntry* temp;
 	type_t *ty = decl->getType();
 	int width_ = getWidth(ty);
-	temp = new SymbolEntry(decl->getName(),ty,width_,offset,decl->getNestedTable());
+	temp = new SymbolEntry(decl->getName(),ty,width_,offset+8,decl->getNestedTable());
 	entries.push_back(temp);
 	offset += width_;
 	return temp;
@@ -432,7 +438,7 @@ SymbolEntry* SymbolTable::gentemp(decl_t* decl){
 SymbolEntry* SymbolTable::gentemp(SymbolEntry* temp){
 	type_t *ty = temp->getType();
 	int width_ = getWidth(ty);
-	temp = new SymbolEntry(temp->getName(),ty,width_,offset,temp->getNestedTable());
+	temp = new SymbolEntry(temp->getName(),ty,width_,offset+8,temp->getNestedTable());
 	entries.push_back(temp);
 	offset += width_;
 	return temp;
@@ -463,6 +469,29 @@ void SymbolTable::print(){
 	for(int i = 0; i < entries.size(); i++){
 		cout << i << " : ";entries[i]->print();
 	}
+}
+
+void SymbolTable::targetOffsets(){
+	int retLoc = -1;
+	for(int i = 0; i < entries.size(); i++){
+		if(entries[i]->getName()->compare("retVal") == 0){
+			retLoc = i;
+			break;
+		}
+	}
+	if(retLoc == -1)
+		return;
+	int O = 16;
+	for(int i = retLoc; i >= 0; i--){
+		entries[i]->setOffset(O);
+		O += 8;
+	}
+	O = -8;
+	for(int i = retLoc+1; i < entries.size(); i++){
+		entries[i]->setOffset(O);
+		O -= 8;
+	}
+	return;
 }
 
 //////////////// QUAD ENTRY //////////////////////
@@ -678,7 +707,11 @@ void QuadEntry::print(){
 
 ////////////////// QUAD ARRAY //////////////////
 // Quad Entries are stored in a vector named entries
-QuadArray::QuadArray(){}
+QuadArray::QuadArray(){
+	lfb = 0;
+	lfe = 0;
+	lc = 0;
+}
 
 // Used to push the Quad Entry into the entries vector. This effectively strores an instruction
 void QuadArray::emit(QuadEntry* qd){
@@ -697,6 +730,33 @@ void QuadArray::print(){
 	for(int i = 0; i < entries.size(); i++){
 		cout << i << " : ";entries[i]->print();
 	}
+}
+
+void QuadArray::createLabels(){
+	for(int i = 0; i < entries.size(); i++){
+		if(entries[i]->getOPCode() == OP_FUNC_START){
+			entries[i]->setLabel(".LFB" + to_string(lfb));
+			lfb++;
+		}
+		if(entries[i]->getOPCode() == OP_FUNC_END){
+			entries[i]->setLabel(".LFE" + to_string(lfe));
+			lfe++;
+		}
+		if(entries[i]->getOPCode() == OP_GOTO || 
+			entries[i]->getOPCode() == OP_IF_LT_GOTO ||
+			entries[i]->getOPCode() == OP_IF_GT_GOTO ||
+			entries[i]->getOPCode() == OP_IF_LTE_GOTO ||
+			entries[i]->getOPCode() == OP_IF_GTE_GOTO ||
+			entries[i]->getOPCode() == OP_IF_EQ_GOTO ||
+			entries[i]->getOPCode() == OP_IF_NEQ_GOTO ||
+			entries[i]->getOPCode() == OP_IF_GOTO ||
+			entries[i]->getOPCode() == OP_IFF_GOTO )
+		{
+			int j = atoi(entries[i]->getResult().c_str());
+			entries[j]->setLabel(".L" + to_string(lc));
+			lc++;
+		}
+	}	
 }
 
 ////////////// BACKPATCHING //////////////	
@@ -805,172 +865,172 @@ void generateTargetCode(QuadEntry *qe,QuadArray* QA, SymbolTable* st){
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t" << "-" << a2->getOffset() << "(%%rsp), " << "%%rdx\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t" << a2->getOffset() << "(%%rbp), " << "%%rdx\n";
 			cout << "\taddq\t%%rdx, %%rax\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_NEG:
 			a1 = st->lookup(qe->getArgv1());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
 			cout << "\tnegq\trax\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_SUB:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t" << "-" << a2->getOffset() << "(%%rsp), " << "%%rdx\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t" << a2->getOffset() << "(%%rbp), " << "%%rdx\n";
 			cout << "\tsubq\trdx, rax\n";
-			cout << "\tmovq\trax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\trax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_LSFT:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t" << "-" << a2->getOffset() << "(%%rsp), " << "%%rdx\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t" << a2->getOffset() << "(%%rbp), " << "%%rdx\n";
 			cout << "\tshlq\trdx, rax\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_RSFT:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t" << "-" << a2->getOffset() << "(%%rsp), " << "%%rdx\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t" << a2->getOffset() << "(%%rbp), " << "%%rdx\n";
 			cout << "\tshrq\trdx, rax\n";
-			cout << "\tmovq\trax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\trax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_MUL:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t" << "-" << a2->getOffset() << "(%%rsp), " << "%%rdx\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t" << a2->getOffset() << "(%%rbp), " << "%%rdx\n";
 			cout << "\timulq\trdx, rax\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_DIV:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t" << "-" << a2->getOffset() << "(%%rsp), " << "%%rcx\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t" << a2->getOffset() << "(%%rbp), " << "%%rcx\n";
 			cout << "\tcqto\n";
 			cout << "\tidivq\trcx\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_MOD:	
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t" << "-" << a2->getOffset() << "(%%rsp), " << "%%rcx\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t" << a2->getOffset() << "(%%rbp), " << "%%rcx\n";
 			cout << "\tcqto\n";
 			cout << "\tidivq\trcx\n";
-			cout << "\tmovq\t%%rdx, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rdx, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_AND:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t" << "-" << a2->getOffset() << "(%%rsp), " << "%%rdx\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t" << a2->getOffset() << "(%%rbp), " << "%%rdx\n";
 			cout << "\tandq\t%%rdx, %%rax\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_XOR:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t" << "-" << a2->getOffset() << "(%%rsp), " << "%%rdx\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t" << a2->getOffset() << "(%%rbp), " << "%%rdx\n";
 			cout << "\txorq\t%%rdx, %%rax\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_OR:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t" << "-" << a2->getOffset() << "(%%rsp), " << "%%rdx\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t" << a2->getOffset() << "(%%rbp), " << "%%rdx\n";
 			cout << "\torq\t%%rdx, %%rax\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_COPY:
 			a1 = st->lookup(qe->getArgv1());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 		case OP_DE_REF_L:
 			a1 = st->lookup(qe->getArgv1());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a3->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rdx\n";
+			cout << "\tmovq\t" << a3->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rdx\n";
 			cout << "\tmovq\t%%rdx, (%%rax)\n";
 			break;
 		case OP_DE_REF_R:
 			a1 = st->lookup(qe->getArgv1());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
 			cout << "\tmovq\t(%%rax), %%rax";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_REF:
 			a1 = st->lookup(qe->getArgv1());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tleaq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tleaq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_IF_LT_GOTO:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			result = atoi(qe->getResult().c_str());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tcmpq\t%%rax, " << "-" << a2->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tcmpq\t%%rax, " << a2->getOffset() << "(%%rbp)\n";
 			cout << "\tjl\t" << QA->getEntry(result)->getLabel() << "\n";
 			break;
 		case OP_IF_GT_GOTO:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			result = atoi(qe->getResult().c_str());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tcmpq\t%%rax, " << "-" << a2->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tcmpq\t%%rax, " << a2->getOffset() << "(%%rbp)\n";
 			cout << "\tjg\t" << QA->getEntry(result)->getLabel() << "\n";
 			break;
 		case OP_IF_LTE_GOTO:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			result = atoi(qe->getResult().c_str());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tcmpq\t%%rax, " << "-" << a2->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tcmpq\t%%rax, " << a2->getOffset() << "(%%rbp)\n";
 			cout << "\tjle\t" << QA->getEntry(result)->getLabel() << "\n";
 			break;
 		case OP_IF_GTE_GOTO:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			result = atoi(qe->getResult().c_str());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tcmpq\t%%rax, " << "-" << a2->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tcmpq\t%%rax, " << a2->getOffset() << "(%%rbp)\n";
 			cout << "\tjge\t" << QA->getEntry(result)->getLabel() << "\n";
 			break;
 		case OP_IF_EQ_GOTO:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			result = atoi(qe->getResult().c_str());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tcmpq\t%%rax, " << "-" << a2->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tcmpq\t%%rax, " << a2->getOffset() << "(%%rbp)\n";
 			cout << "\tje\t" << QA->getEntry(result)->getLabel() << "\n";
 			break;
 		case OP_IF_NEQ_GOTO:
 			a1 = st->lookup(qe->getArgv1());
 			a2 = st->lookup(qe->getArgv2());
 			result = atoi(qe->getResult().c_str());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
-			cout << "\tcmpq\t%%rax, " << "-" << a2->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
+			cout << "\tcmpq\t%%rax, " << a2->getOffset() << "(%%rbp)\n";
 			cout << "\tjne\t" << QA->getEntry(result)->getLabel() << "\n";
 			break;
 		case OP_IF_GOTO:
@@ -984,16 +1044,16 @@ void generateTargetCode(QuadEntry *qe,QuadArray* QA, SymbolTable* st){
 		case OP_INCR:
 			a1 = st->lookup(qe->getArgv1());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
 			cout << "\tincq\t%%rax\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_DECR:
 			a1 = st->lookup(qe->getArgv1());
 			a3 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
 			cout << "\tdecq\t%%rax\n";
-			cout << "\tmovq\t%%rax, " << "-" << a3->getOffset() << "(%%rsp)\n";
+			cout << "\tmovq\t%%rax, " << a3->getOffset() << "(%%rbp)\n";
 			break;
 		case OP_GOTO:
 			result = atoi(qe->getResult().c_str());
@@ -1001,22 +1061,31 @@ void generateTargetCode(QuadEntry *qe,QuadArray* QA, SymbolTable* st){
 			break;
 		case OP_PARAM:
 			a1 = st->lookup(qe->getResult());
-			cout << "\tmovq\t" << "-" << a1->getOffset() << "(%%rsp), " << "%%rax\n";
+			cout << "\tmovq\t" << a1->getOffset() << "(%%rbp), " << "%%rax\n";
 			cout << "\tpushq\t%%rax\n";
 			break;
 		case OP_CALL:
-			
+			a1 = st->lookup(qe->getResult());
+			f = qe->getArgv1();
+			result = atoi(qe->getArgv2().c_str());
+			cout << "\tsubq\t8, %%rsp\n";
+			cout << "\tcall\t" << f << "\n";
+			cout << "\tmovq\t(%%rsp), " << a1->getOffset() << "(%%rbp)\n";
+			result *= 8;
+			cout << "\taddq\t" << result+8 << ", %%rsp\n";
 			break;
 		case OP_RETURN:
 			if((qe->getResult()).compare("") == 0){
-				cout << "\tleave\n";
+				cout << "\taddq\t" << st->getOffset() << ", %%rsp\n";
+				cout << "\tpopq\t%%rbp\n";
 				cout << "\tret\n";	
 			}
 			else{
 				a1 = st->lookup("retVal");
 				a3 = st->lookup(qe->getResult());
-				cout << "\tmovq\t" << "-" << a3->getOffset() << "(%%rsp), " << "%%rax\n";
-				cout << "\tleave\n";
+				cout << "\taddq\t" << st->getOffset() << ", %%rsp\n";
+				cout << "\tmovq\t" << a3->getOffset() << "(%%rbp), " << "%%rax\n";
+				cout << "\tpopq\t%%rbp\n";
 				cout << "\tret\n";	
 			}
 			break;
@@ -1025,13 +1094,13 @@ void generateTargetCode(QuadEntry *qe,QuadArray* QA, SymbolTable* st){
 			cout << "\t.globl\t" << f << "\n";
 			cout << "\t.type\t" << f << ", @function\n";
 			cout << f << ":\n";
+			cout << qe->getLabel() + ":\n";
 			cout << "\tpushq\t%%rbp\n";
 			cout << "\tmovq\t%%rsp, %%rbp\n";
 			cout << "\tsubq\t$" << st->getOffset() << ", %%rsp\n";
 			break;
 		case OP_FUNC_END:
-			cout << "\tleave\n";
-			cout << "\tret\n";	
+			cout << qe->getLabel() + ":\n";
 			cout << "\t.size\t" << qe->getResult() << ", .-" << qe->getResult() << "\n";
 			break;
 		default:
@@ -1046,23 +1115,24 @@ void generateTargetCode(){
 	QuadEntry* qe;
 	int i = 1;
 	bool inFunction = false;
+	QA->createLabels();
 	cout << "-----------------------------------------------TARGET CODE-----------------------------------------------\n";
+	cout << "\t.text\n";
 	for(int i = 0; i < QA->getSize(); i++){
 		qe = QA->getEntry(i);
 		if(qe->getOPCode() == OP_FUNC_START){
 			se = ST->lookup(qe->getResult());
 			st = se->getNestedTable();
+			st->targetOffsets();
 			inFunction = true;
 		}
 		if(qe->getOPCode() == OP_FUNC_END){
 			inFunction = false;
 			st = ST;
 		}
-		if(inFunction == true){
-			generateTargetCode(qe,QA,st);
+		if(qe->getLabel().compare("") != 0 && qe->getOPCode() != OP_FUNC_START && qe->getOPCode() != OP_FUNC_END){
+			cout << qe->getLabel() + ":\n";
 		}
-		else{
-			generateTargetCode(qe,QA,st);
-		}
+		generateTargetCode(qe,QA,st);
 	}
 }

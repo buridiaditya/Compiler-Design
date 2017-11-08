@@ -1,9 +1,27 @@
-int a = 20;
-int foo(int a, int b){
-	int c = a+b;
-	int d = c - 2*a;
-	return d;
+
+int fib(int n){
+	if(n<=1)
+		return 0;
+	return fib(n-1) + fib(n-2);
 }
+
+
+
+
+int mul(int a,int b){
+ 	return a*b;
+}
+
+
+
+
+
 int main(){
+	
+	int c = 3,a = 4;
+	int b = mul(c,(mul(a,a)));
+    //int b = 1;
+	double d = fib(b-1) + fib(fib(b-1));
+	char e = fib(d);
 	return 0;
 }

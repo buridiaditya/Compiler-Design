@@ -1,26 +1,26 @@
 Symbol Table
-0 : NAME : add        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 0
+0 : NAME : add        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 8
 ------------------Nested Table-----------------------
-0 : NAME : retVal        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 0
-1 : NAME : a        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 4
-2 : NAME : b        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 8
-3 : NAME : temp0        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 12
+0 : NAME : a        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 8
+1 : NAME : b        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 16
+2 : NAME : retVal        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 24
+3 : NAME : temp0        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 32
 -----------------------------------------------------
-1 : NAME : main        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 0
+1 : NAME : main        TYPE : FUNCTION        INITIAL VALUE :         SIZE : 0        OFFSET : 8
 ------------------Nested Table-----------------------
-0 : NAME : retVal        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 0
-1 : NAME : a        TYPE : INT        INITIAL VALUE : 9        SIZE : 4        OFFSET : 4
-2 : NAME : b        TYPE : INT        INITIAL VALUE : 18        SIZE : 4        OFFSET : 8
-3 : NAME : c        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 12
-4 : NAME : temp0        TYPE : INT        INITIAL VALUE : 20        SIZE : 4        OFFSET : 16
-5 : NAME : temp1        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 20
-6 : NAME : temp2        TYPE : INT        INITIAL VALUE : 2        SIZE : 4        OFFSET : 24
-7 : NAME : temp3        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 28
-8 : NAME : temp4        TYPE : INT        INITIAL VALUE : 20        SIZE : 4        OFFSET : 32
-9 : NAME : temp5        TYPE : INT        INITIAL VALUE : 35755104        SIZE : 4        OFFSET : 36
-10 : NAME : temp6        TYPE : INT        INITIAL VALUE : 2        SIZE : 4        OFFSET : 40
-11 : NAME : temp7        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 44
-12 : NAME : temp8        TYPE : INT        INITIAL VALUE : 0        SIZE : 4        OFFSET : 48
+0 : NAME : retVal        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 8
+1 : NAME : a        TYPE : INT        INITIAL VALUE : 9        SIZE : 8        OFFSET : 16
+2 : NAME : b        TYPE : INT        INITIAL VALUE : 18        SIZE : 8        OFFSET : 24
+3 : NAME : c        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 32
+4 : NAME : temp0        TYPE : INT        INITIAL VALUE : 20        SIZE : 8        OFFSET : 40
+5 : NAME : temp1        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 48
+6 : NAME : temp2        TYPE : INT        INITIAL VALUE : 2        SIZE : 8        OFFSET : 56
+7 : NAME : temp3        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 64
+8 : NAME : temp4        TYPE : INT        INITIAL VALUE : 20        SIZE : 8        OFFSET : 72
+9 : NAME : temp5        TYPE : INT        INITIAL VALUE : 39207536        SIZE : 8        OFFSET : 80
+10 : NAME : temp6        TYPE : INT        INITIAL VALUE : 2        SIZE : 8        OFFSET : 88
+11 : NAME : temp7        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 96
+12 : NAME : temp8        TYPE : INT        INITIAL VALUE : 0        SIZE : 8        OFFSET : 104
 -----------------------------------------------------
 ===================================================
 Quad Array
@@ -43,66 +43,73 @@ Quad Array
 16 : return temp8
 17 : OP_FUNC_END main
 -----------------------------------------------TARGET CODE-----------------------------------------------
+	.text
 	.globl	add
 	.type	add, @function
 add:
+.LFB0:
 	pushq	%%rbp
 	movq	%%rsp, %%rbp
-	subq	$16, %%rsp
-	movq	-4(%%rsp), %%rax
-	movq	-8(%%rsp), %%rdx
+	subq	$32, %%rsp
+	movq	32(%%rbp), %%rax
+	movq	24(%%rbp), %%rdx
 	addq	%%rdx, %%rax
-	movq	%%rax, -12(%%rsp)
-	movq	-12(%%rsp), %%rax
-	leave
+	movq	%%rax, -8(%%rbp)
+	addq	32, %%rsp
+	movq	-8(%%rbp), %%rax
+	popq	%%rbp
 	ret
-	leave
-	ret
+.LFE0:
 	.size	add, .-add
 	.globl	main
 	.type	main, @function
 main:
+.LFB1:
 	pushq	%%rbp
 	movq	%%rsp, %%rbp
-	subq	$52, %%rsp
-	movq	-4(%%rsp), %%rax
+	subq	$104, %%rsp
+	movq	-8(%%rbp), %%rax
 	pushq	%%rax
-	movq	-8(%%rsp), %%rax
+	movq	-16(%%rbp), %%rax
 	pushq	%%rax
-	movq	-0(%%rsp), %%rax
-	movq	%%rax, -12(%%rsp)
-	movq	-12(%%rsp), %%rax
-	movq	-0(%%rsp), %%rdx
+	movq	8(%%rbp), %%rax
+	movq	%%rax, -24(%%rbp)
+	movq	-24(%%rbp), %%rax
+	movq	8(%%rbp), %%rdx
 	movq	%%rdx, (%%rax)
-	movq	-12(%%rsp), %%rax
-	cmpq	%%rax, -16(%%rsp)
-	jl	
-	jmp	
-	movq	-12(%%rsp), %%rax
-	movq	-24(%%rsp), %%rdx
+	movq	-24(%%rbp), %%rax
+	cmpq	%%rax, -32(%%rbp)
+	jl	.L0
+	jmp	.L1
+.L0:
+	movq	-24(%%rbp), %%rax
+	movq	-48(%%rbp), %%rdx
 	imulq	rdx, rax
-	movq	%%rax, -28(%%rsp)
-	movq	-28(%%rsp), %%rax
-	movq	%%rax, -12(%%rsp)
-	movq	-12(%%rsp), %%rax
-	movq	-28(%%rsp), %%rdx
+	movq	%%rax, -56(%%rbp)
+	movq	-56(%%rbp), %%rax
+	movq	%%rax, -24(%%rbp)
+	movq	-24(%%rbp), %%rax
+	movq	-56(%%rbp), %%rdx
 	movq	%%rdx, (%%rax)
-	movq	-12(%%rsp), %%rax
-	cmpq	%%rax, -32(%%rsp)
-	jge	
-	jmp	
-	movq	-12(%%rsp), %%rax
-	movq	-40(%%rsp), %%rdx
+.L1:
+	movq	-24(%%rbp), %%rax
+	cmpq	%%rax, -64(%%rbp)
+	jge	.L2
+	jmp	.L3
+.L2:
+	movq	-24(%%rbp), %%rax
+	movq	-80(%%rbp), %%rdx
 	addq	%%rdx, %%rax
-	movq	%%rax, -44(%%rsp)
-	movq	-44(%%rsp), %%rax
-	movq	%%rax, -12(%%rsp)
-	movq	-12(%%rsp), %%rax
-	movq	-44(%%rsp), %%rdx
+	movq	%%rax, -88(%%rbp)
+	movq	-88(%%rbp), %%rax
+	movq	%%rax, -24(%%rbp)
+	movq	-24(%%rbp), %%rax
+	movq	-88(%%rbp), %%rdx
 	movq	%%rdx, (%%rax)
-	movq	-48(%%rsp), %%rax
-	leave
+.L3:
+	addq	104, %%rsp
+	movq	-96(%%rbp), %%rax
+	popq	%%rbp
 	ret
-	leave
-	ret
+.LFE1:
 	.size	main, .-main

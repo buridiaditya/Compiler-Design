@@ -9,10 +9,10 @@ using namespace std;
 /////// DETAILED COMMENTS EXPLAINING CLASS DEFINITIONS CAN BE FOUND IN .cpp file
 
 // Sizes of various basic types
-#define SIZE_OF_INT 4
-#define SIZE_OF_CHAR 1
+#define SIZE_OF_INT 8
+#define SIZE_OF_CHAR 8
 #define SIZE_OF_DOUBLE 8
-#define SIZE_OF_POINTER 4
+#define SIZE_OF_POINTER 8
 #define SIZE_OF_VOID 0
 
 // Prototypes of classes
@@ -133,6 +133,7 @@ public:
 	void setSize(int size);
 	void setNestedTable(SymbolTable* st);
 	void initialize(init_t init);
+	void setOffset(int a);
 	string* getName();
 	type_t* getType();
 	int getOffset();
@@ -170,6 +171,7 @@ public:
 	void setOffset(int offset_);
 	void update(string* name,init_t initValue);
 	void print();
+	void targetOffsets();
 private:
 	int offset;
 	int tempNo;
@@ -295,8 +297,12 @@ public:
 	void emit(QuadEntry* entry);
 	QuadEntry* getEntry(int index);
 	void print();
+	void createLabels();
 private:
 	vector<QuadEntry*> entries;
+	int lfb;
+	int lfe;
+	int lc;
 };
 
 //////////////////////////////////////////////////////
