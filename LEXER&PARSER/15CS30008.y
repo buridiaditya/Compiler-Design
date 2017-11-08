@@ -49,11 +49,11 @@
 
 	start : translation_unit 
 	{
-		cout << "Symbol Table" << endl;
-		STCurrent->print();
-		cout << "===================================================" << endl;
-		cout << "Quad Array" << endl;
-		QA->print();
+		//cout << "Symbol Table" << endl;
+		//STCurrent->print();
+		//cout << "===================================================" << endl;
+		//cout << "Quad Array" << endl;
+		//QA->print();
 		//exit(0);
 	}
 	M: 
@@ -2038,7 +2038,6 @@
 		if($3->isFunctionCall() || $3->isArrayAccess() || $3->isDeReference() || $3->isAddress() || $3->isConstant()){
 			b2 = true;
 		}
-
 		if(b1 && b2){
 			if($3->isFunctionCall()){
 				se2 = ST->lookup(se_->getName());
@@ -2184,7 +2183,6 @@
 
 		}
 		else if(!b1 && b2){
-	
 			if($3->isFunctionCall()){
 				se2 = se_;
 				SymbolTable *st = se2->getNestedTable();
@@ -2405,6 +2403,10 @@ assignment_operator : '='
 				qe = new QuadEntry(OP_COPY,se->getName(),se2->getName());	
 				QA->emit(qe);
 			}
+			else if($3->isFunctionCall()){
+				qe = new QuadEntry(OP_CALL,se->getName(),se1->getName(),to_string($3->getNoOfParams()));
+				QA->emit(qe);
+			}
 			else if($3->isConstant())
 				yyerror("Invalid Declaration");
 			else{
@@ -2424,6 +2426,10 @@ assignment_operator : '='
 			}
 			else if($3->isConstant())
 				se->initialize($3->getConstantVal());
+			else if($3->isFunctionCall()){
+				qe = new QuadEntry(OP_CALL,se->getName(),se1->getName(),to_string($3->getNoOfParams()));
+				QA->emit(qe);
+			}
 			else{
 				qe = new QuadEntry(OP_COPY,se->getName(),se1->getName());	
 				QA->emit(qe);

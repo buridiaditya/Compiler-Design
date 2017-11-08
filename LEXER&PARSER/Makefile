@@ -11,8 +11,8 @@ utility:
 	@bison -d 15CS30008.y
 clean:
 	@rm 15CS30008.tab.h 15CS30008.tab.c lex.yy.c utility.o
-test:
-	@./a.out < 15CS30008_test1.mm > 15CS30008_quads_1.out
-	@./a.out < 15CS30008_test2.mm > 15CS30008_quads_2.out
+test: 
+	@./a.out < 15CS30008_test1.mm > 15CS30008_quads_1.s
+	@./a.out < 15CS30008_test2.mm > 15CS30008_quads_2.s
 prompt:
 	@echo "Run 'make test' to execute."
