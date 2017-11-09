@@ -12,6 +12,7 @@ add:
 	movq	%rax, -8(%rbp)
 	addq	32, %rsp
 	movq	-8(%rbp), %rax
+	movq	%rax, 16(%rbp)
 	popq	%rbp
 	ret
 .LFE0:
@@ -31,7 +32,7 @@ main:
 	call	add
 	movq	(%rsp), %rax
 	movq	%rax, -24(%rbp)
-	addq	24, %rsp
+	addq	$24, %rsp
 	movq	-24(%rbp), %rax
 	cmpq	%rax, -32(%rbp)
 	jl	.L0
@@ -64,6 +65,7 @@ main:
 .L3:
 	addq	104, %rsp
 	movq	-96(%rbp), %rax
+	movq	%rax, 16(%rbp)
 	popq	%rbp
 	ret
 .LFE1:

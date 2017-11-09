@@ -1073,7 +1073,7 @@ void generateTargetCode(QuadEntry *qe,QuadArray* QA, SymbolTable* st){
 			cout << "\tmovq\t(%rsp), %rax\n"; 
 			cout << "\tmovq\t%rax, " << a1->getOffset() << "(%rbp)\n";
 			result *= 8;
-			cout << "\taddq\t" << result+8 << ", %rsp\n";
+			cout << "\taddq\t$" << result+8 << ", %rsp\n";
 			break;
 		case OP_RETURN:
 			if((qe->getResult()).compare("") == 0){
@@ -1086,6 +1086,7 @@ void generateTargetCode(QuadEntry *qe,QuadArray* QA, SymbolTable* st){
 				a3 = st->lookup(qe->getResult());
 				cout << "\taddq\t" << st->getOffset() << ", %rsp\n";
 				cout << "\tmovq\t" << a3->getOffset() << "(%rbp), " << "%rax\n";
+				cout << "\tmovq\t%rax, " << a1->getOffset() << "(%rbp)\n";
 				cout << "\tpopq\t%rbp\n";
 				cout << "\tret\n";	
 			}
