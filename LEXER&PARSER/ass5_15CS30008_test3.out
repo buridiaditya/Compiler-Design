@@ -1,5 +1,5 @@
-0 : if n <= temp0 then goto 3
-1 : goto 4
+0 : if n <= temp0 then goto 4
+1 : goto 5
 2 : return temp2
 3 : temp4 = n - temp3
 4 : param temp4
@@ -27,4 +27,6 @@
 26 : d = temp6
 27 : param d
 28 : e = call fib , 1
-29 : return temp7
+29 : param d
+30 : d = call printInt , 1
+31 : return temp8

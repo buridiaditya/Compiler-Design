@@ -1,3 +1,16 @@
 0 : temp0 = a + b
-1 : a = temp0
-2 : return a
+1 : return temp0
+2 : if a < b then goto 7
+3 : goto 8
+4 : a = a + temp1
+5 : if b < a then goto 10
+6 : goto 13
+7 : param a
+8 : param b
+9 : b = call add , 2
+10 : param a
+11 : param b
+12 : temp4 = call add , 2
+13 : temp5 = b + temp4
+14 : b = temp5
+15 : return temp6

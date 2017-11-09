@@ -1,7 +1,9 @@
 0 : if i < a then goto 6
-1 : goto 8
+1 : goto 10
 2 : i = i + temp2
 3 : goto 2
-4 : temp3 = c + d
-5 : d = temp3
-6 : return temp4
+4 : param i
+5 : d = call printInt , 1
+6 : temp4 = c + d
+7 : d = temp4
+8 : return temp5
