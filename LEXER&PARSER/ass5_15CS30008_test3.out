@@ -1,0 +1,30 @@
+0 : if n <= temp0 then goto 3
+1 : goto 4
+2 : return temp2
+3 : temp4 = n - temp3
+4 : param temp4
+5 : temp6 = n - temp5
+6 : param temp6
+7 : temp7 = call fib , 1
+8 : temp8 = call fib , 1
+9 : temp9 = temp7 + temp8
+10 : return temp9
+11 : temp0 = a * b
+12 : return temp0
+13 : param c
+14 : param a
+15 : param a
+16 : param mul
+17 : b = call mul , 2
+18 : temp1 = b - temp0
+19 : param temp1
+20 : temp3 = b - temp2
+21 : param temp3
+22 : param fib
+23 : temp4 = call fib , 1
+24 : temp5 = call fib , 1
+25 : temp6 = temp4 + temp5
+26 : d = temp6
+27 : param d
+28 : e = call fib , 1
+29 : return temp7

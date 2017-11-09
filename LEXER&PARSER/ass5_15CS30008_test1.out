@@ -1,0 +1,7 @@
+0 : if i < a then goto 6
+1 : goto 8
+2 : i = i + temp2
+3 : goto 2
+4 : temp3 = c + d
+5 : d = temp3
+6 : return temp4

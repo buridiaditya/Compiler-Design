@@ -1,0 +1,8 @@
+0 : temp0 = a + b
+1 : return temp0
+2 : param a
+3 : param b
+4 : c = call add , 2
+5 : param a
+6 : a = call printInt , 1
+7 : return d

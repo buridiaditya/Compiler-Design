@@ -1,0 +1,3 @@
+0 : temp0 = a + b
+1 : a = temp0
+2 : return a
