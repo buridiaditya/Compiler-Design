@@ -5,7 +5,13 @@ main:
 .LFB0:
 	pushq	%rbp
 	movq	%rsp, %rbp
-	subq	$144, %rsp
+	subq	$80, %rsp
+	movq	$9, -8(%rbp)
+	movq	$18, -16(%rbp)
+	movq	$18, -24(%rbp)
+	movq	$18, -48(%rbp)
+	movq	$1, -72(%rbp)
+	movq	$1, -80(%rbp)
 	movq	-24(%rbp), %rax
 	movq	%rax, -32(%rbp)
 	movq	-32(%rbp), %rax

@@ -172,6 +172,8 @@ public:
 	void update(string* name,init_t initValue);
 	void print();
 	void targetOffsets();
+    int getSize();
+    SymbolEntry* getEntry(int i);
 private:
 	int offset;
 	int tempNo;

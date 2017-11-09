@@ -404,6 +404,10 @@ SymbolEntry* SymbolTable::lookup(string* name){
 	return NULL;
 }
 
+int SymbolTable::getSize(){
+    return entries.size();
+}
+
 SymbolEntry* SymbolTable::gentemp(type_t* type){
 	SymbolEntry* temp;
 	string* tempName = new string("temp");
@@ -456,6 +460,10 @@ int SymbolTable::getOffset(){
 	return offset;
 }
 
+SymbolEntry* SymbolTable::getEntry(int i){
+    return entries[i];
+}
+
 void SymbolTable::setOffset(int offset_){
 	offset = offset_;
 }
@@ -481,7 +489,7 @@ void SymbolTable::targetOffsets(){
 	}
 	if(retLoc == -1)
 		return;
-	int O = 16;
+	int O = 16,off = 0;
 	for(int i = retLoc; i >= 0; i--){
 		entries[i]->setOffset(O);
 		O += 8;
@@ -490,7 +498,9 @@ void SymbolTable::targetOffsets(){
 	for(int i = retLoc+1; i < entries.size(); i++){
 		entries[i]->setOffset(O);
 		O -= 8;
+        off += 8;
 	}
+    offset = off;
 	return;
 }
 
@@ -1068,7 +1078,7 @@ void generateTargetCode(QuadEntry *qe,QuadArray* QA, SymbolTable* st){
 			a1 = st->lookup(qe->getResult());
 			f = qe->getArgv1();
 			result = atoi(qe->getArgv2().c_str());
-			cout << "\tsubq\t8, %rsp\n";
+			cout << "\tsubq\t$8, %rsp\n";
 			cout << "\tcall\t" << f << "\n";
 			cout << "\tmovq\t(%rsp), %rax\n"; 
 			cout << "\tmovq\t%rax, " << a1->getOffset() << "(%rbp)\n";
@@ -1084,11 +1094,12 @@ void generateTargetCode(QuadEntry *qe,QuadArray* QA, SymbolTable* st){
 			else{
 				a1 = st->lookup("retVal");
 				a3 = st->lookup(qe->getResult());
-				cout << "\taddq\t" << st->getOffset() << ", %rsp\n";
+				cout << "\taddq\t$" << st->getOffset() << ", %rsp\n";
 				cout << "\tmovq\t" << a3->getOffset() << "(%rbp), " << "%rax\n";
 				cout << "\tmovq\t%rax, " << a1->getOffset() << "(%rbp)\n";
 				cout << "\tpopq\t%rbp\n";
-				cout << "\tret\n";	
+				cout << "\tleave\n";
+                cout << "\tret\n";	
 			}
 			break;
 		case OP_FUNC_START:
@@ -1100,7 +1111,15 @@ void generateTargetCode(QuadEntry *qe,QuadArray* QA, SymbolTable* st){
 			cout << "\tpushq\t%rbp\n";
 			cout << "\tmovq\t%rsp, %rbp\n";
 			cout << "\tsubq\t$" << st->getOffset() << ", %rsp\n";
-			break;
+			for(int i = 0; i < st->getSize(); i++){
+                SymbolEntry *temp = st->getEntry(i);
+                if(temp->checkInitialize()){
+                    init_t I = temp->getInitialValue();
+                    int con = I.intVal;
+                    cout << "\tmovq\t$"<< con << ", " << temp->getOffset() << "(%rbp)\n";
+                }
+            }
+            break;
 		case OP_FUNC_END:
 			cout << qe->getLabel() + ":\n";
 			cout << "\t.size\t" << qe->getResult() << ", .-" << qe->getResult() << "\n";
